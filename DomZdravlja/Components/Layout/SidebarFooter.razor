@@ -1,0 +1,27 @@
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject AuthService Auth
+@inject NavigationManager Navigation
+
+<div class="sidebar-footer">
+    @if (Auth.CurrentUser is not null)
+    {
+        <div class="user-info">
+            <span class="user-name">@Auth.CurrentUser.FullName</span>
+            <span class="user-role">@GetRoleLabel(Auth.CurrentUser.Role)</span>
+        </div>
+    }
+    <a href="/auth/logout" class="btn btn-outline btn-sm">Odjava</a>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync() => await Auth.EnsureLoadedAsync();
+
+    private static string GetRoleLabel(UserRole role) => role switch
+    {
+        UserRole.Administrator => "Administrator",
+        UserRole.Moderator => "Moderator",
+        UserRole.Korisnik => "Korisnik",
+        _ => role.ToString()
+    };
+}

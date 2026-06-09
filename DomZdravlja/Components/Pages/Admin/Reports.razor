@@ -1,0 +1,108 @@
+@page "/admin/izvjestaji"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject ReportService ReportService
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Administrator })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Izvještaji</h1>
+                <p>Pregled zaliha i aktivnosti zahtjeva</p>
+            </div>
+            <button class="btn btn-outline" @onclick="LoadReport">Osvježi</button>
+        </div>
+
+        @if (_report is not null)
+        {
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-value">@_report.TotalMedicines</span>
+                    <span class="stat-label">Ukupno lijekova</span>
+                </div>
+                <div class="stat-card warning">
+                    <span class="stat-value">@_report.LowStockCount</span>
+                    <span class="stat-label">Niska zaliha</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">@_report.PendingRequests</span>
+                    <span class="stat-label">Na čekanju</span>
+                </div>
+                <div class="stat-card success">
+                    <span class="stat-value">@_report.DeliveredRequests</span>
+                    <span class="stat-label">Izdato</span>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h2>Stanje zaliha</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Lijek</th>
+                                <th>Količina</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _report.MedicineStock)
+                            {
+                                <tr>
+                                    <td>@item.Name</td>
+                                    <td>@item.Quantity @item.Unit</td>
+                                    <td>
+                                        @if (item.IsLowStock)
+                                        {
+                                            <span class="badge badge-warning">Niska (@item.MinimumStock min.)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-success">OK</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h2>Zahtjevi po ambulantama</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Ambulanta</th>
+                                <th>Ukupno</th>
+                                <th>Izdato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _report.RequestsByAmbulance)
+                            {
+                                <tr>
+                                    <td>@item.AmbulanceName</td>
+                                    <td>@item.TotalRequests</td>
+                                    <td>@item.DeliveredCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="report-summary">
+                        <p>Odobreni zahtjevi: <strong>@_report.ApprovedRequests</strong></p>
+                        <p>Odbijeni zahtjevi: <strong>@_report.RejectedRequests</strong></p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</AuthGuard>
+
+@code {
+    private ReportSummary? _report;
+
+    protected override async Task OnInitializedAsync() => await LoadReport();
+
+    private async Task LoadReport() => _report = await ReportService.GetSummaryAsync();
+}

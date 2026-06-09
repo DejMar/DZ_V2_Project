@@ -1,0 +1,172 @@
+@page "/admin/lijekovi"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject MedicineService MedicineService
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Administrator })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Lijekovi</h1>
+                <p>Upravljanje zalihama lijekova u domu zdravlja</p>
+            </div>
+            <button class="btn btn-primary" @onclick="ShowAddForm">+ Dodaj lijek</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-error" : "alert-success")">@_message</div>
+        }
+
+        @if (_showForm)
+        {
+            <div class="card form-card">
+                <h2>@(_editingId.HasValue ? "Uredi lijek" : "Novi lijek")</h2>
+                <EditForm Model="_form" OnValidSubmit="SaveMedicine">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Naziv</label>
+                            <InputText @bind-Value="_form.Name" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Jedinica</label>
+                            <InputText @bind-Value="_form.Unit" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Opis</label>
+                        <InputText @bind-Value="_form.Description" class="form-control" />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Količina na zalihi</label>
+                            <InputNumber @bind-Value="_form.Quantity" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Minimalna zaliha</label>
+                            <InputNumber @bind-Value="_form.MinimumStock" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Spremi</button>
+                        <button type="button" class="btn btn-outline" @onclick="CancelForm">Odustani</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Naziv</th>
+                        <th>Opis</th>
+                        <th>Zaliha</th>
+                        <th>Min. zaliha</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var medicine in _medicines)
+                    {
+                        <tr>
+                            <td><strong>@medicine.Name</strong></td>
+                            <td>@medicine.Description</td>
+                            <td>@medicine.Quantity @medicine.Unit</td>
+                            <td>@medicine.MinimumStock</td>
+                            <td>
+                                @if (medicine.IsLowStock)
+                                {
+                                    <span class="badge badge-warning">Niska zaliha</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-success">OK</span>
+                                }
+                            </td>
+                            <td class="actions">
+                                <button class="btn btn-sm btn-outline" @onclick="() => EditMedicine(medicine)">Uredi</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteMedicine(medicine.Id)">Obriši</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private List<Medicine> _medicines = [];
+    private bool _showForm;
+    private int? _editingId;
+    private Medicine _form = new();
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData() => _medicines = await MedicineService.GetAllAsync();
+
+    private void ShowAddForm()
+    {
+        _form = new Medicine();
+        _editingId = null;
+        _showForm = true;
+        _message = null;
+    }
+
+    private void EditMedicine(Medicine medicine)
+    {
+        _form = new Medicine
+        {
+            Id = medicine.Id,
+            Name = medicine.Name,
+            Description = medicine.Description,
+            Quantity = medicine.Quantity,
+            Unit = medicine.Unit,
+            MinimumStock = medicine.MinimumStock
+        };
+        _editingId = medicine.Id;
+        _showForm = true;
+        _message = null;
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _editingId = null;
+    }
+
+    private async Task SaveMedicine()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Name))
+        {
+            ShowMessage("Naziv lijeka je obavezan.", true);
+            return;
+        }
+
+        if (_editingId.HasValue)
+            await MedicineService.UpdateAsync(_form);
+        else
+            await MedicineService.AddAsync(_form);
+
+        _showForm = false;
+        await LoadData();
+        ShowMessage("Lijek je uspješno spremljen.", false);
+    }
+
+    private async Task DeleteMedicine(int id)
+    {
+        await MedicineService.DeleteAsync(id);
+        await LoadData();
+        ShowMessage("Lijek je obrisan.", false);
+    }
+
+    private void ShowMessage(string text, bool isError)
+    {
+        _message = text;
+        _isError = isError;
+    }
+}

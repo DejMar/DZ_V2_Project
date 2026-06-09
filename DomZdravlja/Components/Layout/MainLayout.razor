@@ -1,0 +1,55 @@
+﻿@inherits LayoutComponentBase
+@using DomZdravlja.Models
+@using DomZdravlja.Services
+@using DomZdravlja.Components.Layout
+@inject AuthService Auth
+
+<div class="app-shell">
+    @if (Auth.IsAuthenticated)
+    {
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <span class="brand-icon">+</span>
+                <div>
+                    <strong>Dom Zdravlja</strong>
+                    <small>Evidencija lijekova</small>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                @if (Auth.IsInRole(UserRole.Administrator))
+                {
+                    <NavLink href="/admin/lijekovi" Match="NavLinkMatch.All">Lijekovi</NavLink>
+                    <NavLink href="/admin/izvjestaji">Izvještaji</NavLink>
+                }
+
+                @if (Auth.IsInRole(UserRole.Moderator))
+                {
+                    <NavLink href="/moderator/zahtjevi" Match="NavLinkMatch.All">Zahtjevi</NavLink>
+                }
+
+                @if (Auth.IsInRole(UserRole.Korisnik))
+                {
+                    <NavLink href="/korisnik/novi-zahtjev" Match="NavLinkMatch.All">Novi zahtjev</NavLink>
+                    <NavLink href="/korisnik/moji-zahtjevi">Moji zahtjevi</NavLink>
+                }
+            </nav>
+
+            <SidebarFooter />
+        </aside>
+    }
+
+    <main class="main-content @(Auth.IsAuthenticated ? "" : "full-width")">
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    Došlo je do greške.
+    <a href="" class="reload">Osvježi</a>
+    <a class="dismiss">×</a>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync() => await Auth.EnsureLoadedAsync();
+}

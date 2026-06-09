@@ -1,0 +1,37 @@
+@using DomZdravlja.Models
+@inject AuthService Auth
+@inject NavigationManager Navigation
+
+@if (_checked)
+{
+    @if (!Auth.IsAuthenticated)
+    {
+        <div class="page"><p>Preusmjeravanje...</p></div>
+    }
+    else if (AllowedRoles.Length > 0 && !AllowedRoles.Contains(Auth.CurrentUser!.Role))
+    {
+        <div class="page">
+            <div class="alert alert-error">Nemate pristup ovoj stranici.</div>
+        </div>
+    }
+    else
+    {
+        @ChildContent
+    }
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public UserRole[] AllowedRoles { get; set; } = [];
+    private bool _checked;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.EnsureLoadedAsync();
+
+        if (!Auth.IsAuthenticated)
+            Navigation.NavigateTo("/prijava", forceLoad: true);
+        else
+            _checked = true;
+    }
+}

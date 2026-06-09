@@ -1,0 +1,49 @@
+@page "/prijava"
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager Navigation
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-header">
+            <span class="brand-icon large">+</span>
+            <h1>Dom Zdravlja</h1>
+            <p>Evidencija lijekova — prijava</p>
+        </div>
+
+        @if (_showError)
+        {
+            <div class="alert alert-error">Pogrešno korisničko ime ili lozinka.</div>
+        }
+
+        <form method="post" action="/auth/login">
+            <div class="form-group">
+                <label for="username">Korisničko ime</label>
+                <input id="username" name="username" class="form-control" placeholder="Unesite korisničko ime" required />
+            </div>
+            <div class="form-group">
+                <label for="password">Lozinka</label>
+                <input id="password" name="password" type="password" class="form-control" placeholder="Unesite lozinku" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Prijavi se</button>
+        </form>
+
+        <div class="login-hint">
+            <p><strong>Demo nalozi:</strong></p>
+            <ul>
+                <li>admin / admin123</li>
+                <li>moderator / mod123</li>
+                <li>korisnik1 / user123</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _showError;
+
+    protected override void OnInitialized()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        _showError = QueryHelpers.ParseQuery(uri.Query).ContainsKey("error");
+    }
+}

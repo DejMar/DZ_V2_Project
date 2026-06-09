@@ -1,0 +1,89 @@
+@page "/korisnik/moji-zahtjevi"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject RequestService RequestService
+@inject MedicineService MedicineService
+@inject AuthService Auth
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Korisnik })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Moji zahtjevi</h1>
+                <p>Pregled poslanih zahtjeva za lijekove</p>
+            </div>
+            <a href="/korisnik/novi-zahtjev" class="btn btn-primary">+ Novi zahtjev</a>
+        </div>
+
+        <div class="card">
+            @if (_requests.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>Još niste poslali nijedan zahtjev.</p>
+                    <a href="/korisnik/novi-zahtjev" class="btn btn-primary">Kreiraj prvi zahtjev</a>
+                </div>
+            }
+            else
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Lijek</th>
+                            <th>Količina</th>
+                            <th>Status</th>
+                            <th>Napomena</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var request in _requests)
+                        {
+                            <tr>
+                                <td>@request.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@GetMedicineName(request.MedicineId)</td>
+                                <td>@request.Quantity</td>
+                                <td><span class="badge @GetStatusClass(request.Status)">@GetStatusLabel(request.Status)</span></td>
+                                <td>@(string.IsNullOrWhiteSpace(request.Note) ? "—" : request.Note)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private List<MedicationRequest> _requests = [];
+    private Dictionary<int, string> _medicineNames = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUser is not null)
+            _requests = await RequestService.GetByUserIdAsync(Auth.CurrentUser.Id);
+
+        var medicines = await MedicineService.GetAllAsync();
+        _medicineNames = medicines.ToDictionary(m => m.Id, m => m.Name);
+    }
+
+    private string GetMedicineName(int id) =>
+        _medicineNames.TryGetValue(id, out var name) ? name : "Nepoznat";
+
+    private static string GetStatusLabel(RequestStatus status) => status switch
+    {
+        RequestStatus.NaCekanju => "Na čekanju",
+        RequestStatus.Odobren => "Odobren",
+        RequestStatus.Odbijen => "Odbijen",
+        RequestStatus.Izdato => "Izdato",
+        _ => status.ToString()
+    };
+
+    private static string GetStatusClass(RequestStatus status) => status switch
+    {
+        RequestStatus.NaCekanju => "badge-info",
+        RequestStatus.Odobren => "badge-info",
+        RequestStatus.Odbijen => "badge-danger",
+        RequestStatus.Izdato => "badge-success",
+        _ => "badge-info"
+    };
+}

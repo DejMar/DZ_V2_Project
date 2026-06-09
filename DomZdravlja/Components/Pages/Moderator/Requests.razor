@@ -1,0 +1,206 @@
+@page "/moderator/zahtjevi"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject RequestService RequestService
+@inject MedicineService MedicineService
+@inject AmbulanceService AmbulanceService
+@inject AuthService Auth
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Moderator })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Zahtjevi za lijekove</h1>
+                <p>Pregled i obrada zahtjeva ambulanti</p>
+            </div>
+            <button class="btn btn-outline" @onclick="LoadData">Osvježi</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-error" : "alert-success")">@_message</div>
+        }
+
+        @if (_pendingRequests.Count == 0 && _otherRequests.Count == 0)
+        {
+            <div class="card empty-state">
+                <p>Trenutno nema zahtjeva za obradu.</p>
+            </div>
+        }
+        else
+        {
+            @if (_pendingRequests.Count > 0)
+            {
+                <div class="card">
+                    <h2>Na čekanju (@_pendingRequests.Count)</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Ambulanta</th>
+                                <th>Lijek</th>
+                                <th>Količina</th>
+                                <th>Akcije</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var request in _pendingRequests)
+                            {
+                                <tr>
+                                    <td>@request.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@GetAmbulanceName(request.AmbulanceId)</td>
+                                    <td>@GetMedicineName(request.MedicineId)</td>
+                                    <td>@request.Quantity</td>
+                                    <td class="actions">
+                                        <button class="btn btn-sm btn-primary" @onclick="() => Approve(request.Id)">Odobri</button>
+                                        <button class="btn btn-sm btn-danger" @onclick="() => Reject(request.Id)">Odbij</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            @if (_approvedRequests.Count > 0)
+            {
+                <div class="card">
+                    <h2>Odobreni — spremni za izdavanje (@_approvedRequests.Count)</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Ambulanta</th>
+                                <th>Lijek</th>
+                                <th>Količina</th>
+                                <th>Akcije</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var request in _approvedRequests)
+                            {
+                                <tr>
+                                    <td>@request.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@GetAmbulanceName(request.AmbulanceId)</td>
+                                    <td>@GetMedicineName(request.MedicineId)</td>
+                                    <td>@request.Quantity</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-success" @onclick="() => Deliver(request.Id)">Izdaj lijek</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            @if (_otherRequests.Count > 0)
+            {
+                <div class="card">
+                    <h2>Historija</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Ambulanta</th>
+                                <th>Lijek</th>
+                                <th>Količina</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var request in _otherRequests)
+                            {
+                                <tr>
+                                    <td>@request.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@GetAmbulanceName(request.AmbulanceId)</td>
+                                    <td>@GetMedicineName(request.MedicineId)</td>
+                                    <td>@request.Quantity</td>
+                                    <td><span class="badge @GetStatusClass(request.Status)">@GetStatusLabel(request.Status)</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+    </div>
+</AuthGuard>
+
+@code {
+    private List<MedicationRequest> _pendingRequests = [];
+    private List<MedicationRequest> _approvedRequests = [];
+    private List<MedicationRequest> _otherRequests = [];
+    private Dictionary<int, string> _medicineNames = [];
+    private Dictionary<int, string> _ambulanceNames = [];
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        var all = await RequestService.GetAllAsync();
+        _pendingRequests = all.Where(r => r.Status == RequestStatus.NaCekanju).OrderBy(r => r.CreatedAt).ToList();
+        _approvedRequests = all.Where(r => r.Status == RequestStatus.Odobren).OrderBy(r => r.CreatedAt).ToList();
+        _otherRequests = all.Where(r => r.Status is RequestStatus.Izdato or RequestStatus.Odbijen)
+            .OrderByDescending(r => r.ProcessedAt).Take(20).ToList();
+
+        var medicines = await MedicineService.GetAllAsync();
+        _medicineNames = medicines.ToDictionary(m => m.Id, m => m.Name);
+
+        var ambulances = await AmbulanceService.GetAllAsync();
+        _ambulanceNames = ambulances.ToDictionary(a => a.Id, a => a.Name);
+    }
+
+    private string GetMedicineName(int id) =>
+        _medicineNames.TryGetValue(id, out var name) ? name : "Nepoznat";
+
+    private string GetAmbulanceName(int id) =>
+        _ambulanceNames.TryGetValue(id, out var name) ? name : "Nepoznata";
+
+    private async Task Approve(int id)
+    {
+        var success = await RequestService.ApproveAsync(id, Auth.CurrentUser!.Id);
+        ShowMessage(success ? "Zahtjev je odobren." : "Greška pri odobravanju.", !success);
+        if (success) await LoadData();
+    }
+
+    private async Task Reject(int id)
+    {
+        var success = await RequestService.RejectAsync(id, Auth.CurrentUser!.Id, "Zahtjev odbijen.");
+        ShowMessage(success ? "Zahtjev je odbijen." : "Greška pri odbijanju.", !success);
+        if (success) await LoadData();
+    }
+
+    private async Task Deliver(int id)
+    {
+        var success = await RequestService.DeliverAsync(id, Auth.CurrentUser!.Id);
+        ShowMessage(success ? "Lijek je izdat ambulanti." : "Nema dovoljno lijeka na zalihi.", !success);
+        if (success) await LoadData();
+    }
+
+    private void ShowMessage(string text, bool isError)
+    {
+        _message = text;
+        _isError = isError;
+    }
+
+    private static string GetStatusLabel(RequestStatus status) => status switch
+    {
+        RequestStatus.NaCekanju => "Na čekanju",
+        RequestStatus.Odobren => "Odobren",
+        RequestStatus.Odbijen => "Odbijen",
+        RequestStatus.Izdato => "Izdato",
+        _ => status.ToString()
+    };
+
+    private static string GetStatusClass(RequestStatus status) => status switch
+    {
+        RequestStatus.NaCekanju => "badge-info",
+        RequestStatus.Odobren => "badge-info",
+        RequestStatus.Odbijen => "badge-danger",
+        RequestStatus.Izdato => "badge-success",
+        _ => "badge-info"
+    };
+}

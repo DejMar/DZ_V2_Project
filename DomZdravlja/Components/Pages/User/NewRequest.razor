@@ -1,0 +1,121 @@
+@page "/korisnik/novi-zahtjev"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject RequestService RequestService
+@inject MedicineService MedicineService
+@inject AmbulanceService AmbulanceService
+@inject AuthService Auth
+@inject NavigationManager Navigation
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Korisnik })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Novi zahtjev</h1>
+                <p>Zatražite lijekove za vašu ambulantu</p>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-error" : "alert-success")">@_message</div>
+        }
+
+        <div class="card form-card">
+            @if (_ambulanceName is not null)
+            {
+                <p class="info-text">Ambulanta: <strong>@_ambulanceName</strong></p>
+            }
+
+            <EditForm Model="_form" OnValidSubmit="SubmitRequest">
+                <div class="form-group">
+                    <label>Lijek</label>
+                    <InputSelect @bind-Value="_form.MedicineId" class="form-control">
+                        <option value="0">— Odaberite lijek —</option>
+                        @foreach (var medicine in _medicines)
+                        {
+                            <option value="@medicine.Id">@medicine.Name (@medicine.Quantity @medicine.Unit)</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="form-group">
+                    <label>Količina</label>
+                    <InputNumber @bind-Value="_form.Quantity" class="form-control" min="1" />
+                </div>
+                <div class="form-group">
+                    <label>Napomena (opcionalno)</label>
+                    <InputText @bind-Value="_form.Note" class="form-control" placeholder="Dodatne informacije..." />
+                </div>
+                <button type="submit" class="btn btn-primary" disabled="@_loading">
+                    @(_loading ? "Slanje..." : "Pošalji zahtjev")
+                </button>
+            </EditForm>
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private List<Medicine> _medicines = [];
+    private string? _ambulanceName;
+    private RequestForm _form = new();
+    private string? _message;
+    private bool _isError;
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _medicines = await MedicineService.GetAllAsync();
+        if (Auth.CurrentUser?.AmbulanceId is int ambulanceId)
+            _ambulanceName = await AmbulanceService.GetNameByIdAsync(ambulanceId);
+    }
+
+    private async Task SubmitRequest()
+    {
+        if (_form.MedicineId == 0)
+        {
+            ShowMessage("Odaberite lijek.", true);
+            return;
+        }
+
+        if (_form.Quantity <= 0)
+        {
+            ShowMessage("Količina mora biti veća od 0.", true);
+            return;
+        }
+
+        if (Auth.CurrentUser?.AmbulanceId is not int ambulanceId)
+        {
+            ShowMessage("Korisnik nije povezan sa ambulantom.", true);
+            return;
+        }
+
+        _loading = true;
+
+        await RequestService.CreateAsync(new MedicationRequest
+        {
+            UserId = Auth.CurrentUser.Id,
+            AmbulanceId = ambulanceId,
+            MedicineId = _form.MedicineId,
+            Quantity = _form.Quantity,
+            Note = _form.Note
+        });
+
+        _loading = false;
+        ShowMessage("Zahtjev je uspješno poslan moderatoru.", false);
+        _form = new RequestForm();
+        Navigation.NavigateTo("/korisnik/moji-zahtjevi");
+    }
+
+    private void ShowMessage(string text, bool isError)
+    {
+        _message = text;
+        _isError = isError;
+    }
+
+    private class RequestForm
+    {
+        public int MedicineId { get; set; }
+        public int Quantity { get; set; } = 1;
+        public string Note { get; set; } = string.Empty;
+    }
+}
