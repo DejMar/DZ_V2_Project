@@ -1,0 +1,234 @@
+@page "/admin/korisnici"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject UserService UserService
+@inject AmbulanceService AmbulanceService
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Administrator })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Korisnici</h1>
+                <p>Upravljanje korisničkim nalozima i ulogama</p>
+            </div>
+            <button class="btn btn-primary" @onclick="ShowAddForm">+ Dodaj korisnika</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-error" : "alert-success")">@_message</div>
+        }
+
+        @if (_showForm)
+        {
+            <div class="card form-card">
+                <h2>@(_editingId.HasValue ? "Uredi korisnika" : "Novi korisnik")</h2>
+                <EditForm Model="_form" OnValidSubmit="SaveUser">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Puno ime</label>
+                            <InputText @bind-Value="_form.FullName" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Korisničko ime</label>
+                            <InputText @bind-Value="_form.Username" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lozinka @(_editingId.HasValue ? "(ostavi prazno da zadržiš)" : "")</label>
+                            <InputText @bind-Value="_password" type="password" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Uloga</label>
+                            <InputSelect @bind-Value="_form.Role" class="form-control">
+                                <option value="@UserRole.Administrator">Administrator</option>
+                                <option value="@UserRole.Moderator">Moderator</option>
+                                <option value="@UserRole.Korisnik">Korisnik</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+                    @if (_form.Role == UserRole.Korisnik)
+                    {
+                        <div class="form-group">
+                            <label>Ambulanta</label>
+                            <InputSelect @bind-Value="_form.AmbulanceId" class="form-control">
+                                <option value="">— Odaberite —</option>
+                                @foreach (var ambulance in _ambulances)
+                                {
+                                    <option value="@ambulance.Id">@ambulance.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    }
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Spremi</button>
+                        <button type="button" class="btn btn-outline" @onclick="CancelForm">Odustani</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Ime</th>
+                        <th>Korisničko ime</th>
+                        <th>Uloga</th>
+                        <th>Ambulanta</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in _users)
+                    {
+                        <tr class="@(user.IsActive ? "" : "row-inactive")">
+                            <td><strong>@user.FullName</strong></td>
+                            <td>@user.Username</td>
+                            <td>@GetRoleLabel(user.Role)</td>
+                            <td>@GetAmbulanceName(user.AmbulanceId)</td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="badge badge-success">Aktivan</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-danger">Deaktiviran</span>
+                                }
+                            </td>
+                            <td class="actions">
+                                <button class="btn btn-sm btn-outline" @onclick="() => EditUser(user)">Uredi</button>
+                                @if (user.IsActive)
+                                {
+                                    <button class="btn btn-sm btn-danger" @onclick="() => ToggleActive(user.Id, false)">Deaktiviraj</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-success" @onclick="() => ToggleActive(user.Id, true)">Aktiviraj</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private List<User> _users = [];
+    private List<Ambulance> _ambulances = [];
+    private bool _showForm;
+    private int? _editingId;
+    private User _form = new();
+    private string _password = string.Empty;
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        _users = await UserService.GetAllAsync();
+        _ambulances = await AmbulanceService.GetAllAsync();
+    }
+
+    private void ShowAddForm()
+    {
+        _form = new User { Role = UserRole.Korisnik };
+        _password = string.Empty;
+        _editingId = null;
+        _showForm = true;
+        _message = null;
+    }
+
+    private void EditUser(User user)
+    {
+        _form = new User
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Username = user.Username,
+            Password = user.Password,
+            Role = user.Role,
+            AmbulanceId = user.AmbulanceId,
+            IsActive = user.IsActive
+        };
+        _password = string.Empty;
+        _editingId = user.Id;
+        _showForm = true;
+        _message = null;
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _editingId = null;
+    }
+
+    private async Task SaveUser()
+    {
+        if (string.IsNullOrWhiteSpace(_form.FullName) || string.IsNullOrWhiteSpace(_form.Username))
+        {
+            ShowMessage("Ime i korisničko ime su obavezni.", true);
+            return;
+        }
+
+        if (await UserService.UsernameExistsAsync(_form.Username, _editingId))
+        {
+            ShowMessage("Korisničko ime već postoji.", true);
+            return;
+        }
+
+        if (_form.Role == UserRole.Korisnik && _form.AmbulanceId is null)
+        {
+            ShowMessage("Korisnik mora imati dodijeljenu ambulantu.", true);
+            return;
+        }
+
+        if (!_editingId.HasValue && string.IsNullOrWhiteSpace(_password))
+        {
+            ShowMessage("Lozinka je obavezna za novog korisnika.", true);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_password))
+            _form.Password = _password;
+
+        if (_editingId.HasValue)
+            await UserService.UpdateAsync(_form);
+        else
+            await UserService.AddAsync(_form);
+
+        _showForm = false;
+        await LoadData();
+        ShowMessage("Korisnik je uspješno spremljen.", false);
+    }
+
+    private async Task ToggleActive(int id, bool isActive)
+    {
+        await UserService.SetActiveAsync(id, isActive);
+        await LoadData();
+        ShowMessage(isActive ? "Korisnik je aktiviran." : "Korisnik je deaktiviran.", false);
+    }
+
+    private string GetAmbulanceName(int? id) =>
+        id is int ambulanceId ? _ambulances.FirstOrDefault(a => a.Id == ambulanceId)?.Name ?? "—" : "—";
+
+    private static string GetRoleLabel(UserRole role) => role switch
+    {
+        UserRole.Administrator => "Administrator",
+        UserRole.Moderator => "Moderator",
+        UserRole.Korisnik => "Korisnik",
+        _ => role.ToString()
+    };
+
+    private void ShowMessage(string text, bool isError)
+    {
+        _message = text;
+        _isError = isError;
+    }
+}

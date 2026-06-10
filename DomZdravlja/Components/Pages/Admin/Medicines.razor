@@ -47,6 +47,10 @@
                             <InputNumber @bind-Value="_form.MinimumStock" class="form-control" />
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label>Rok trajanja</label>
+                        <InputDate @bind-Value="_form.ExpiryDate" class="form-control" />
+                    </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">Spremi</button>
                         <button type="button" class="btn btn-outline" @onclick="CancelForm">Odustani</button>
@@ -62,7 +66,7 @@
                         <th>Naziv</th>
                         <th>Opis</th>
                         <th>Zaliha</th>
-                        <th>Min. zaliha</th>
+                        <th>Rok trajanja</th>
                         <th>Status</th>
                         <th></th>
                     </tr>
@@ -74,17 +78,8 @@
                             <td><strong>@medicine.Name</strong></td>
                             <td>@medicine.Description</td>
                             <td>@medicine.Quantity @medicine.Unit</td>
-                            <td>@medicine.MinimumStock</td>
-                            <td>
-                                @if (medicine.IsLowStock)
-                                {
-                                    <span class="badge badge-warning">Niska zaliha</span>
-                                }
-                                else
-                                {
-                                    <span class="badge badge-success">OK</span>
-                                }
-                            </td>
+                            <td>@(medicine.ExpiryDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                            <td>@GetStatusBadge(medicine)</td>
                             <td class="actions">
                                 <button class="btn btn-sm btn-outline" @onclick="() => EditMedicine(medicine)">Uredi</button>
                                 <button class="btn btn-sm btn-danger" @onclick="() => DeleteMedicine(medicine.Id)">Obriši</button>
@@ -111,7 +106,7 @@
 
     private void ShowAddForm()
     {
-        _form = new Medicine();
+        _form = new Medicine { ExpiryDate = DateTime.Today.AddYears(1) };
         _editingId = null;
         _showForm = true;
         _message = null;
@@ -126,7 +121,8 @@
             Description = medicine.Description,
             Quantity = medicine.Quantity,
             Unit = medicine.Unit,
-            MinimumStock = medicine.MinimumStock
+            MinimumStock = medicine.MinimumStock,
+            ExpiryDate = medicine.ExpiryDate
         };
         _editingId = medicine.Id;
         _showForm = true;
@@ -163,6 +159,18 @@
         await LoadData();
         ShowMessage("Lijek je obrisan.", false);
     }
+
+    private static RenderFragment GetStatusBadge(Medicine medicine) => builder =>
+    {
+        if (medicine.IsExpired)
+            builder.AddMarkupContent(0, "<span class=\"badge badge-danger\">Istekao</span>");
+        else if (medicine.IsExpiringSoon)
+            builder.AddMarkupContent(0, "<span class=\"badge badge-warning\">Ističe uskoro</span>");
+        else if (medicine.IsLowStock)
+            builder.AddMarkupContent(0, "<span class=\"badge badge-warning\">Niska zaliha</span>");
+        else
+            builder.AddMarkupContent(0, "<span class=\"badge badge-success\">OK</span>");
+    };
 
     private void ShowMessage(string text, bool isError)
     {

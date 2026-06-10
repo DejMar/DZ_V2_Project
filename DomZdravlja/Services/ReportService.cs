@@ -28,6 +28,8 @@ public class ReportService
         {
             TotalMedicines = medicines.Count,
             LowStockCount = medicines.Count(m => m.IsLowStock),
+            ExpiredCount = medicines.Count(m => m.IsExpired),
+            ExpiringSoonCount = medicines.Count(m => m.IsExpiringSoon),
             PendingRequests = requests.Count(r => r.Status == RequestStatus.NaCekanju),
             ApprovedRequests = requests.Count(r => r.Status == RequestStatus.Odobren),
             DeliveredRequests = requests.Count(r => r.Status == RequestStatus.Izdato),
@@ -38,7 +40,10 @@ public class ReportService
                 Quantity = m.Quantity,
                 Unit = m.Unit,
                 MinimumStock = m.MinimumStock,
-                IsLowStock = m.IsLowStock
+                IsLowStock = m.IsLowStock,
+                ExpiryDate = m.ExpiryDate,
+                IsExpired = m.IsExpired,
+                IsExpiringSoon = m.IsExpiringSoon
             }).OrderBy(m => m.Name).ToList(),
             RequestsByAmbulance = ambulances.Select(a => new AmbulanceRequestReport
             {

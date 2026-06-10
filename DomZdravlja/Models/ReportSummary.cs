@@ -4,6 +4,8 @@ public class ReportSummary
 {
     public int TotalMedicines { get; set; }
     public int LowStockCount { get; set; }
+    public int ExpiredCount { get; set; }
+    public int ExpiringSoonCount { get; set; }
     public int PendingRequests { get; set; }
     public int ApprovedRequests { get; set; }
     public int DeliveredRequests { get; set; }
@@ -19,6 +21,9 @@ public class MedicineStockReport
     public string Unit { get; set; } = string.Empty;
     public int MinimumStock { get; set; }
     public bool IsLowStock { get; set; }
+    public DateTime? ExpiryDate { get; set; }
+    public bool IsExpired { get; set; }
+    public bool IsExpiringSoon { get; set; }
 }
 
 public class AmbulanceRequestReport

@@ -43,21 +43,28 @@ public class RequestService
         return await UpdateStatusAsync(requestId, RequestStatus.Odbijen, moderatorId, note);
     }
 
-    public async Task<bool> DeliverAsync(int requestId, int moderatorId)
+    public async Task<string?> DeliverAsync(int requestId, int moderatorId)
     {
         var requests = await _repository.GetAllAsync();
         var request = requests.FirstOrDefault(r => r.Id == requestId);
         if (request is null || request.Status != RequestStatus.Odobren)
-            return false;
+            return "Zahtjev nije pronađen ili nije odobren.";
+
+        var medicine = await _medicineService.GetByIdAsync(request.MedicineId);
+        if (medicine is null)
+            return "Lijek nije pronađen.";
+
+        if (medicine.IsExpired)
+            return "Lijek je istekao i ne može se izdati.";
 
         if (!await _medicineService.ReduceStockAsync(request.MedicineId, request.Quantity))
-            return false;
+            return "Nema dovoljno lijeka na zalihi.";
 
         request.Status = RequestStatus.Izdato;
         request.ModeratorId = moderatorId;
         request.ProcessedAt = DateTime.Now;
         await _repository.SaveAllAsync(requests);
-        return true;
+        return null;
     }
 
     private async Task<bool> UpdateStatusAsync(int requestId, RequestStatus status, int moderatorId, string note)

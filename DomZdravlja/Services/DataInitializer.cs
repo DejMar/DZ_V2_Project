@@ -23,15 +23,17 @@ public class DataInitializer
 
     public async Task InitializeAsync()
     {
+        await MigrateLegacyUsersAsync();
+
         if ((await _users.GetAllAsync()).Count == 0)
         {
             await _users.SaveAllAsync(
             [
-                new User { Id = 1, Username = "admin", Password = "admin123", Role = UserRole.Administrator, FullName = "Admin Korisnik" },
-                new User { Id = 2, Username = "moderator", Password = "mod123", Role = UserRole.Moderator, FullName = "Moderator Korisnik" },
-                new User { Id = 3, Username = "korisnik1", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 1, FullName = "Dr. Ana Marković" },
-                new User { Id = 4, Username = "korisnik2", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 2, FullName = "Dr. Marko Jović" },
-                new User { Id = 5, Username = "korisnik3", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 3, FullName = "Dr. Ivana Petrović" }
+                new User { Id = 1, Username = "admin", Password = "admin123", Role = UserRole.Administrator, FullName = "Admin Korisnik", IsActive = true },
+                new User { Id = 2, Username = "moderator", Password = "mod123", Role = UserRole.Moderator, FullName = "Moderator Korisnik", IsActive = true },
+                new User { Id = 3, Username = "korisnik1", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 1, FullName = "Dr. Ana Marković", IsActive = true },
+                new User { Id = 4, Username = "korisnik2", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 2, FullName = "Dr. Marko Jović", IsActive = true },
+                new User { Id = 5, Username = "korisnik3", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 3, FullName = "Dr. Ivana Petrović", IsActive = true }
             ]);
         }
 
@@ -49,15 +51,30 @@ public class DataInitializer
         {
             await _medicines.SaveAllAsync(
             [
-                new Medicine { Id = 1, Name = "Paracetamol 500mg", Description = "Analgetik i antipiretik", Quantity = 500, Unit = "tableta", MinimumStock = 100 },
-                new Medicine { Id = 2, Name = "Ibuprofen 400mg", Description = "Protivupalni lijek", Quantity = 300, Unit = "tableta", MinimumStock = 80 },
-                new Medicine { Id = 3, Name = "Amoxicillin 500mg", Description = "Antibiotik", Quantity = 150, Unit = "kapsula", MinimumStock = 50 },
-                new Medicine { Id = 4, Name = "Hlorheksidin", Description = "Antiseptik", Quantity = 40, Unit = "flaša", MinimumStock = 20 },
-                new Medicine { Id = 5, Name = "Fizološki rastvor", Description = "Infuzija 0.9% NaCl", Quantity = 200, Unit = "vrecica", MinimumStock = 50 }
+                new Medicine { Id = 1, Name = "Paracetamol 500mg", Description = "Analgetik i antipiretik", Quantity = 500, Unit = "tableta", MinimumStock = 100, ExpiryDate = DateTime.Today.AddMonths(18) },
+                new Medicine { Id = 2, Name = "Ibuprofen 400mg", Description = "Protivupalni lijek", Quantity = 300, Unit = "tableta", MinimumStock = 80, ExpiryDate = DateTime.Today.AddMonths(12) },
+                new Medicine { Id = 3, Name = "Amoxicillin 500mg", Description = "Antibiotik", Quantity = 150, Unit = "kapsula", MinimumStock = 50, ExpiryDate = DateTime.Today.AddDays(20) },
+                new Medicine { Id = 4, Name = "Hlorheksidin", Description = "Antiseptik", Quantity = 40, Unit = "flaša", MinimumStock = 20, ExpiryDate = DateTime.Today.AddMonths(-1) },
+                new Medicine { Id = 5, Name = "Fizološki rastvor", Description = "Infuzija 0.9% NaCl", Quantity = 200, Unit = "vrecica", MinimumStock = 50, ExpiryDate = DateTime.Today.AddMonths(24) }
             ]);
         }
 
         if ((await _requests.GetAllAsync()).Count == 0)
             await _requests.SaveAllAsync([]);
+    }
+
+    private async Task MigrateLegacyUsersAsync()
+    {
+        var users = await _users.GetAllAsync();
+        if (users.Count == 0)
+            return;
+
+        if (users.Any(u => u.IsActive))
+            return;
+
+        foreach (var user in users)
+            user.IsActive = true;
+
+        await _users.SaveAllAsync(users);
     }
 }

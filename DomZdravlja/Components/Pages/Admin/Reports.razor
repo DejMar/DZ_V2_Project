@@ -10,7 +10,11 @@
                 <h1>Izvještaji</h1>
                 <p>Pregled zaliha i aktivnosti zahtjeva</p>
             </div>
-            <button class="btn btn-outline" @onclick="LoadReport">Osvježi</button>
+            <div class="header-actions">
+                <a href="/admin/export/csv" class="btn btn-outline" target="_blank">Preuzmi CSV</a>
+                <a href="/admin/export/report" class="btn btn-outline" target="_blank">Izvještaj (PDF)</a>
+                <button class="btn btn-outline" @onclick="LoadReport">Osvježi</button>
+            </div>
         </div>
 
         @if (_report is not null)
@@ -23,6 +27,14 @@
                 <div class="stat-card warning">
                     <span class="stat-value">@_report.LowStockCount</span>
                     <span class="stat-label">Niska zaliha</span>
+                </div>
+                <div class="stat-card warning">
+                    <span class="stat-value">@_report.ExpiringSoonCount</span>
+                    <span class="stat-label">Ističe uskoro</span>
+                </div>
+                <div class="stat-card warning">
+                    <span class="stat-value">@_report.ExpiredCount</span>
+                    <span class="stat-label">Istekli</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-value">@_report.PendingRequests</span>
@@ -42,6 +54,7 @@
                             <tr>
                                 <th>Lijek</th>
                                 <th>Količina</th>
+                                <th>Rok</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -51,8 +64,17 @@
                                 <tr>
                                     <td>@item.Name</td>
                                     <td>@item.Quantity @item.Unit</td>
+                                    <td>@(item.ExpiryDate?.ToString("dd.MM.yyyy") ?? "—")</td>
                                     <td>
-                                        @if (item.IsLowStock)
+                                        @if (item.IsExpired)
+                                        {
+                                            <span class="badge badge-danger">Istekao</span>
+                                        }
+                                        else if (item.IsExpiringSoon)
+                                        {
+                                            <span class="badge badge-warning">Ističe uskoro</span>
+                                        }
+                                        else if (item.IsLowStock)
                                         {
                                             <span class="badge badge-warning">Niska (@item.MinimumStock min.)</span>
                                         }

@@ -8,4 +8,5 @@ public class User
     public UserRole Role { get; set; }
     public int? AmbulanceId { get; set; }
     public string FullName { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
 }

@@ -162,6 +162,16 @@ a {
     gap: 1rem;
 }
 
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.row-inactive {
+    opacity: 0.6;
+}
+
 .page-header h1 {
     margin: 0 0 0.25rem;
     font-size: 1.75rem;
@@ -478,6 +488,31 @@ a {
 .login-hint ul {
     margin: 0.5rem 0 0;
     padding-left: 1.25rem;
+}
+
+.login-docs {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.login-docs p {
+    margin-bottom: 0.75rem;
+}
+
+.login-docs-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.login-docs-buttons .btn {
+    justify-content: center;
+    text-align: center;
 }
 
 .empty-state {

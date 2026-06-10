@@ -82,10 +82,13 @@
                                 <tr>
                                     <td>@request.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
                                     <td>@GetAmbulanceName(request.AmbulanceId)</td>
-                                    <td>@GetMedicineName(request.MedicineId)</td>
+                                    <td>
+                                        @GetMedicineName(request.MedicineId)
+                                        @GetExpiryWarning(request.MedicineId)
+                                    </td>
                                     <td>@request.Quantity</td>
                                     <td>
-                                        <button class="btn btn-sm btn-success" @onclick="() => Deliver(request.Id)">Izdaj lijek</button>
+                                        <button class="btn btn-sm btn-success" @onclick="() => Deliver(request.Id)" disabled="@IsExpired(request.MedicineId)">Izdaj lijek</button>
                                     </td>
                                 </tr>
                             }
@@ -132,6 +135,7 @@
     private List<MedicationRequest> _approvedRequests = [];
     private List<MedicationRequest> _otherRequests = [];
     private Dictionary<int, string> _medicineNames = [];
+    private Dictionary<int, Medicine> _medicines = [];
     private Dictionary<int, string> _ambulanceNames = [];
     private string? _message;
     private bool _isError;
@@ -147,6 +151,7 @@
             .OrderByDescending(r => r.ProcessedAt).Take(20).ToList();
 
         var medicines = await MedicineService.GetAllAsync();
+        _medicines = medicines.ToDictionary(m => m.Id);
         _medicineNames = medicines.ToDictionary(m => m.Id, m => m.Name);
 
         var ambulances = await AmbulanceService.GetAllAsync();
@@ -175,10 +180,24 @@
 
     private async Task Deliver(int id)
     {
-        var success = await RequestService.DeliverAsync(id, Auth.CurrentUser!.Id);
-        ShowMessage(success ? "Lijek je izdat ambulanti." : "Nema dovoljno lijeka na zalihi.", !success);
-        if (success) await LoadData();
+        var error = await RequestService.DeliverAsync(id, Auth.CurrentUser!.Id);
+        ShowMessage(error is null ? "Lijek je izdat ambulanti." : error, error is not null);
+        if (error is null) await LoadData();
     }
+
+    private bool IsExpired(int medicineId) =>
+        _medicines.TryGetValue(medicineId, out var medicine) && medicine.IsExpired;
+
+    private RenderFragment GetExpiryWarning(int medicineId) => builder =>
+    {
+        if (!_medicines.TryGetValue(medicineId, out var medicine))
+            return;
+
+        if (medicine.IsExpired)
+            builder.AddMarkupContent(0, " <span class=\"badge badge-danger\">Istekao</span>");
+        else if (medicine.IsExpiringSoon)
+            builder.AddMarkupContent(0, " <span class=\"badge badge-warning\">Ističe uskoro</span>");
+    };
 
     private void ShowMessage(string text, bool isError)
     {

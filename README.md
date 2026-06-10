@@ -6,9 +6,24 @@ Jednostavna C# Blazor aplikacija za evidenciju lijekova u domu zdravlja. Podaci 
 
 | Uloga | Opis |
 |-------|------|
-| **Administrator** | Unosi i uređuje lijekove, pregleda izvještaje o zalihama i zahtjevima |
-| **Moderator** | Odobrava, odbija i izdaje lijekove ambulantama na osnovu zahtjeva |
-| **Korisnik** | Šalje zahtjeve za lijekove za svoju ambulantu |
+| **Administrator** | Upravlja lijekovima i korisnicima, pregleda izvještaje i izvozi podatke |
+| **Moderator** | Odobrava, odbija i izdaje lijekove ambulantama (ne može izdati istekle lijekove) |
+| **Korisnik** | Šalje zahtjeve za lijekove za svoju ambulantu i prati njihov status |
+
+## Funkcionalnosti
+
+### Osnovne
+- Prijava po ulogama (session autentifikacija)
+- CRUD nad lijekovima
+- Zahtjevi za lijekove (korisnik → moderator → izdavanje)
+- Izvještaji o zalihama i zahtjevima po ambulantama
+- Upozorenje za nisku zalihu
+
+### Nove funkcionalnosti
+- **Upravljanje korisnicima** (`/admin/korisnici`) — dodavanje, uređivanje, aktivacija/deaktivacija naloga
+- **Rok trajanja lijekova** — praćenje isteka, upozorenje „Ističe uskoro" (30 dana), blokada izdavanja isteklih lijekova
+- **Izvoz izvještaja** — preuzimanje CSV fajla i HTML izvještaja za PDF štampu
+- **Dokumentacija u aplikaciji** — linkovi na stranici za prijavu otvaraju HTML uputstva
 
 ## Preuzimanje sa GitHuba
 
@@ -63,6 +78,7 @@ Pri prvom pokretanju automatski se kreira folder `DomZdravlja/Data/` sa početni
 | `dotnet: command not found` | Instaliraj .NET 8 SDK i restartuj terminal |
 | Port 5141 je zauzet | Pokreni sa: `dotnet run --urls "http://localhost:5200"` i otvori `http://localhost:5200/prijava` |
 | Stranica se ne učitava | Sačekaj nekoliko sekundi nakon `dotnet run`, provjeri tačan port u terminalu |
+| Korisnik ne može da se prijavi | Provjeri da nije deaktiviran; za nove demo korisnike obriši `Data/users.json` i restartuj app |
 
 ## Pokretanje (lokalni razvoj)
 
@@ -81,26 +97,68 @@ Aplikacija je dostupna na **http://localhost:5141** — stranica za prijavu: **h
 | moderator | mod123 | Moderator |
 | korisnik1 | user123 | Korisnik (Opća ambulanta) |
 | korisnik2 | user123 | Korisnik (Pedijatrijska ambulanta) |
+| korisnik3 | user123 | Korisnik (Stomatološka ambulanta) |
+
+## Stranice aplikacije
+
+| URL | Uloga | Opis |
+|-----|-------|------|
+| `/prijava` | Svi | Prijava + linkovi na dokumentaciju |
+| `/admin/lijekovi` | Administrator | Upravljanje lijekovima i rokom trajanja |
+| `/admin/korisnici` | Administrator | Upravljanje korisnicima |
+| `/admin/izvjestaji` | Administrator | Izvještaji i izvoz CSV/PDF |
+| `/moderator/zahtjevi` | Moderator | Obrada zahtjeva |
+| `/korisnik/novi-zahtjev` | Korisnik | Slanje zahtjeva |
+| `/korisnik/moji-zahtjevi` | Korisnik | Pregled vlastitih zahtjeva |
+
+## Dokumentacija
+
+| Fajl | Opis |
+|------|------|
+| [DOKUMENTACIJA.html](DOKUMENTACIJA.html) | Uputstvo, test scenariji, tok rada |
+| [STRUKTURA_KODA.html](STRUKTURA_KODA.html) | Objašnjenje strukture koda i fajlova |
+
+Dokumentacija je dostupna i iz aplikacije (dugmad na stranici za prijavu) ili direktno na:
+- `http://localhost:5141/DOKUMENTACIJA.html`
+- `http://localhost:5141/STRUKTURA_KODA.html`
 
 ## Struktura projekta
 
 ```
-DomZdravlja/
-├── Models/          # Entiteti (Lijek, Zahtjev, Korisnik...)
-├── Services/        # Poslovna logika i JSON repozitorij
-├── Components/      # Blazor UI komponente
-└── Data/            # JSON fajlovi (automatski kreirani pri pokretanju)
+DZ_V2_Project/
+├── README.md
+├── DOKUMENTACIJA.html
+├── STRUKTURA_KODA.html
+├── DomZdravlja.sln
+└── DomZdravlja/
+    ├── Program.cs              # Ulazna tačka, registracija servisa
+    ├── AuthEndpoints.cs        # Login/logout HTTP endpointi
+    ├── ExportEndpoints.cs      # CSV i HTML izvoz izvještaja
+    ├── Models/                 # Entiteti (Lijek, Zahtjev, Korisnik...)
+    ├── Services/               # Poslovna logika i JSON repozitorij
+    ├── Components/             # Blazor UI komponente
+    │   └── Pages/
+    │       ├── Admin/          # Lijekovi, Korisnici, Izvještaji
+    │       ├── Moderator/      # Zahtjevi
+    │       └── User/           # Novi zahtjev, Moji zahtjevi
+    ├── wwwroot/                # CSS, HTML dokumentacija
+    └── Data/                   # JSON fajlovi (runtime)
+        ├── users.json
+        ├── medicines.json
+        ├── ambulances.json
+        └── requests.json
 ```
 
 ## Tok rada
 
 1. **Korisnik** pošalje zahtjev za lijek
 2. **Moderator** odobri ili odbije zahtjev
-3. **Moderator** izda lijek ambulanti (smanjuje se zaliha)
-4. **Administrator** prati stanje zaliha i izvještaje
+3. **Moderator** izda lijek ambulanti (smanjuje se zaliha; istekli lijekovi se ne mogu izdati)
+4. **Administrator** prati stanje zaliha, upravlja korisnicima i izvozi izvještaje
 
 ## Tehnologije
 
 - .NET 8
 - Blazor Server (interaktivni UI)
+- ASP.NET Session autentifikacija
 - JSON file storage

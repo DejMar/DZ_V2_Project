@@ -20,7 +20,7 @@ public static class AuthEndpoints
                 u.Username.Equals(username, StringComparison.OrdinalIgnoreCase) &&
                 u.Password == password);
 
-            if (user is null)
+            if (user is null || !user.IsActive)
             {
                 context.Response.Redirect("/prijava?error=1");
                 return;

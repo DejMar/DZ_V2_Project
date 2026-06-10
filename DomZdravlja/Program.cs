@@ -32,6 +32,8 @@ builder.Services.AddScoped<MedicineService>();
 builder.Services.AddScoped<AmbulanceService>();
 builder.Services.AddScoped<RequestService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<ReportExportService>();
 
 var app = builder.Build();
 
@@ -53,6 +55,7 @@ app.UseSession();
 app.UseAntiforgery();
 
 app.MapAuthEndpoints();
+app.MapExportEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
