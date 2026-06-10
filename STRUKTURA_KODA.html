@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dom Zdravlja — Struktura koda</title>
+    <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #ccfbf1;
+            --bg: #f0fdfa;
+            --surface: #ffffff;
+            --text: #134e4a;
+            --text-muted: #5f8a87;
+            --border: #99f6e4;
+            --code-bg: #134e4a;
+            --folder: #d97706;
+            --file: #2563eb;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f766e, #134e4a);
+            color: white;
+            padding: 2.5rem 2rem;
+            text-align: center;
+        }
+
+        header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        header p { opacity: 0.85; }
+
+        nav.toc {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        nav.toc a {
+            color: var(--primary-dark);
+            text-decoration: none;
+            margin-right: 1.25rem;
+            font-size: 0.88rem;
+            font-weight: 500;
+        }
+
+        nav.toc a:hover { text-decoration: underline; }
+
+        main {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 20px rgba(13,148,136,0.06);
+        }
+
+        h2 {
+            color: var(--primary-dark);
+            font-size: 1.35rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-light);
+        }
+
+        h3 {
+            color: var(--primary);
+            font-size: 1rem;
+            margin: 1.25rem 0 0.5rem;
+        }
+
+        p { margin-bottom: 0.75rem; }
+
+        .tree {
+            background: var(--code-bg);
+            color: #ccfbf1;
+            padding: 1.25rem;
+            border-radius: 8px;
+            font-family: "Cascadia Code", "Fira Code", monospace;
+            font-size: 0.82rem;
+            line-height: 1.7;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .tree .folder { color: #fcd34d; }
+        .tree .file { color: #93c5fd; }
+        .tree .comment { color: #6ee7b7; font-style: italic; }
+
+        .layer-diagram {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .layer {
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .layer-ui { background: #dbeafe; color: #1e40af; }
+        .layer-svc { background: #d1fae5; color: #065f46; }
+        .layer-data { background: #fef3c7; color: #92400e; }
+        .layer-arrow { text-align: center; color: var(--primary); font-size: 1.2rem; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.75rem 0;
+            font-size: 0.88rem;
+        }
+
+        th, td {
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        th {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+
+        tr:hover td { background: var(--bg); }
+
+        .file-path {
+            font-family: monospace;
+            font-size: 0.82rem;
+            color: var(--file);
+            white-space: nowrap;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            margin-right: 0.25rem;
+        }
+
+        .tag-model { background: #dbeafe; color: #1e40af; }
+        .tag-service { background: #d1fae5; color: #065f46; }
+        .tag-ui { background: #ede9fe; color: #5b21b6; }
+        .tag-config { background: #fef3c7; color: #92400e; }
+        .tag-data { background: #fce7f3; color: #9d174d; }
+
+        .file-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 0.75rem 0;
+            background: var(--bg);
+        }
+
+        .file-card .title {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 0.35rem;
+        }
+
+        .file-card .desc { font-size: 0.9rem; color: var(--text); }
+        .file-card .uses { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.4rem; }
+
+        code {
+            background: var(--primary-light);
+            padding: 0.12rem 0.35rem;
+            border-radius: 4px;
+            font-size: 0.84rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Struktura koda</h1>
+    <p>Dom Zdravlja — objašnjenje fajlova i arhitekture projekta</p>
+</header>
+
+<nav class="toc">
+    <a href="#pregled">Pregled</a>
+    <a href="#stablo">Stablo fajlova</a>
+    <a href="#slojevi">Slojevi</a>
+    <a href="#models">Models</a>
+    <a href="#services">Services</a>
+    <a href="#components">Components</a>
+    <a href="#ostalo">Ostali fajlovi</a>
+    <a href="#tok">Tok podataka</a>
+</nav>
+
+<main>
+
+    <section id="pregled">
+        <h2>1. Pregled arhitekture</h2>
+        <p>
+            Projekt koristi <strong>troslojnu arhitekturu</strong> prilagođenu jednostavnim aplikacijama:
+            prezentacija (UI), poslovna logika (Services) i podaci (JSON fajlovi).
+            Nema baze podataka — umjesto nje koristi se generički <code>JsonFileRepository</code>.
+        </p>
+        <div class="layer-diagram">
+            <div class="layer layer-ui">Components/ — Blazor stranice (UI)</div>
+            <div class="layer-arrow">↓ poziva</div>
+            <div class="layer layer-svc">Services/ — poslovna logika</div>
+            <div class="layer-arrow">↓ čita/piše</div>
+            <div class="layer layer-data">Data/*.json — perzistentni podaci</div>
+        </div>
+        <p>
+            <strong>Models/</strong> su zajedničke C# klase (DTO/entiteti) koje koriste i servisi i UI.
+            <strong>Program.cs</strong> je ulazna tačka koja povezuje sve dijelove.
+        </p>
+    </section>
+
+    <section id="stablo">
+        <h2>2. Stablo projekta</h2>
+        <div class="tree">
+<span class="folder">DZ_V2_Project/</span>
+├── <span class="file">DomZdravlja.sln</span>              <span class="comment">← Visual Studio solution fajl</span>
+├── <span class="file">README.md</span>                   <span class="comment">← Uputstvo za pokretanje</span>
+├── <span class="file">DOKUMENTACIJA.html</span>          <span class="comment">← Dokumentacija i test scenariji</span>
+├── <span class="file">STRUKTURA_KODA.html</span>         <span class="comment">← Ovaj dokument</span>
+├── <span class="file">.gitignore</span>
+└── <span class="folder">DomZdravlja/</span>                  <span class="comment">← Glavni projekat</span>
+    ├── <span class="file">Program.cs</span>                <span class="comment">← Ulazna tačka, konfiguracija</span>
+    ├── <span class="file">AuthEndpoints.cs</span>        <span class="comment">← Login/logout HTTP endpointi</span>
+    ├── <span class="file">DomZdravlja.csproj</span>      <span class="comment">← Definicija .NET projekta</span>
+    ├── <span class="file">appsettings.json</span>        <span class="comment">← Konfiguracija aplikacije</span>
+    ├── <span class="folder">Models/</span>                 <span class="comment">← Entiteti (6 fajlova)</span>
+    ├── <span class="folder">Services/</span>               <span class="comment">← Poslovna logika (8 fajlova)</span>
+    ├── <span class="folder">Components/</span>             <span class="comment">← Blazor UI</span>
+    │   ├── <span class="file">App.razor</span>
+    │   ├── <span class="file">Routes.razor</span>
+    │   ├── <span class="file">AuthGuard.razor</span>
+    │   ├── <span class="file">_Imports.razor</span>
+    │   ├── <span class="folder">Layout/</span>
+    │   │   ├── <span class="file">MainLayout.razor</span>
+    │   │   ├── <span class="file">SidebarFooter.razor</span>
+    │   │   └── <span class="file">MainLayout.razor.css</span>
+    │   └── <span class="folder">Pages/</span>
+    │       ├── <span class="file">Home.razor</span>
+    │       ├── <span class="file">Login.razor</span>
+    │       ├── <span class="file">Error.razor</span>
+    │       ├── <span class="folder">Admin/</span>
+    │       │   ├── <span class="file">Medicines.razor</span>
+    │       │   └── <span class="file">Reports.razor</span>
+    │       ├── <span class="folder">Moderator/</span>
+    │       │   └── <span class="file">Requests.razor</span>
+    │       └── <span class="folder">User/</span>
+    │           ├── <span class="file">NewRequest.razor</span>
+    │           └── <span class="file">MyRequests.razor</span>
+    ├── <span class="folder">Data/</span>                   <span class="comment">← JSON podaci (runtime)</span>
+    │   ├── <span class="file">users.json</span>
+    │   ├── <span class="file">medicines.json</span>
+    │   ├── <span class="file">ambulances.json</span>
+    │   └── <span class="file">requests.json</span>
+    ├── <span class="folder">wwwroot/</span>
+    │   └── <span class="file">app.css</span>             <span class="comment">← Globalni CSS stilovi</span>
+    └── <span class="folder">Properties/</span>
+        └── <span class="file">launchSettings.json</span> <span class="comment">← Port i profili pokretanja</span>
+        </div>
+        <p><em>Folders <code>bin/</code> i <code>obj/</code> se generišu pri buildu i ne šalju se u repozitorij.</em></p>
+    </section>
+
+    <section id="slojevi">
+        <h2>3. Odgovornosti po sloju</h2>
+        <table>
+            <thead>
+                <tr><th>Sloj</th><th>Folder</th><th>Odgovornost</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="tag tag-ui">UI</span></td>
+                    <td><code>Components/</code></td>
+                    <td>Prikaz podataka, forme, navigacija, zaštita stranica po ulogama</td>
+                </tr>
+                <tr>
+                    <td><span class="tag tag-service">Logika</span></td>
+                    <td><code>Services/</code></td>
+                    <td>CRUD operacije, validacija, izvještaji, autentifikacija</td>
+                </tr>
+                <tr>
+                    <td><span class="tag tag-model">Model</span></td>
+                    <td><code>Models/</code></td>
+                    <td>Struktura podataka — klase koje predstavljaju entitete</td>
+                </tr>
+                <tr>
+                    <td><span class="tag tag-data">Podaci</span></td>
+                    <td><code>Data/</code></td>
+                    <td>Trajno čuvanje podataka u JSON formatu</td>
+                </tr>
+                <tr>
+                    <td><span class="tag tag-config">Config</span></td>
+                    <td><code>Program.cs</code>, <code>appsettings.json</code></td>
+                    <td>Pokretanje app-a, registracija servisa, middleware</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="models">
+        <h2>4. Models/ — entiteti</h2>
+        <p>C# klase koje opisuju strukturu podataka. Koriste se u servisima i pri serijalizaciji u JSON.</p>
+
+        <table>
+            <thead>
+                <tr><th>Fajl</th><th>Klasa</th><th>Opis</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="file-path">User.cs</td>
+                    <td><code>User</code></td>
+                    <td>Korisnik sistema: id, username, password, uloga, ambulanta, puno ime</td>
+                </tr>
+                <tr>
+                    <td class="file-path">UserRole.cs</td>
+                    <td><code>UserRole</code></td>
+                    <td>Enum: Administrator, Moderator, Korisnik</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Medicine.cs</td>
+                    <td><code>Medicine</code></td>
+                    <td>Lijek: naziv, opis, količina, jedinica, min. zaliha. Svojstvo <code>IsLowStock</code> signalizira nisku zalihu</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Ambulance.cs</td>
+                    <td><code>Ambulance</code></td>
+                    <td>Ambulanta u domu zdravlja (id, naziv)</td>
+                </tr>
+                <tr>
+                    <td class="file-path">MedicationRequest.cs</td>
+                    <td><code>MedicationRequest</code></td>
+                    <td>Zahtjev za lijek: ko je poslao, za koju ambulantu, koji lijek, količina, status, datum</td>
+                </tr>
+                <tr>
+                    <td class="file-path">RequestStatus.cs</td>
+                    <td><code>RequestStatus</code></td>
+                    <td>Enum: NaCekanju, Odobren, Odbijen, Izdato</td>
+                </tr>
+                <tr>
+                    <td class="file-path">ReportSummary.cs</td>
+                    <td><code>ReportSummary</code>, <code>MedicineStockReport</code>, <code>AmbulanceRequestReport</code></td>
+                    <td>Modeli za prikaz izvještaja na admin stranici (agregirani podaci, ne čuvaju se u JSON)</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="services">
+        <h2>5. Services/ — poslovna logika</h2>
+        <p>Servisi enkapsuliraju logiku i komuniciraju sa JSON fajlovima. Registruju se u <code>Program.cs</code>.</p>
+
+        <div class="file-card">
+            <div class="title">JsonFileRepository.cs</div>
+            <div class="desc">
+                Generička klasa <code>JsonFileRepository&lt;T&gt;</code> — čita i piše listu objekata u JSON fajl.
+                Metode: <code>GetAllAsync()</code>, <code>SaveAllAsync()</code>.
+                Automatski kreira <code>Data/</code> folder ako ne postoji.
+            </div>
+            <div class="uses">Koriste: svi ostali servisi</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">DataInitializer.cs</div>
+            <div class="desc">
+                Pri prvom pokretanju aplikacije popunjava prazne JSON fajlove demo podacima
+                (5 korisnika, 3 ambulante, 5 lijekova). Pokreće se jednom u <code>Program.cs</code>.
+            </div>
+            <div class="uses">Poziva: Program.cs pri startu</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">AuthService.cs</div>
+            <div class="desc">
+                Upravlja trenutno prijavljenim korisnikom. Čita korisnika iz ASP.NET session-a
+                (<code>EnsureLoadedAsync</code>). Metode: <code>IsAuthenticated</code>, <code>IsInRole</code>.
+            </div>
+            <div class="uses">Koriste: AuthGuard, MainLayout, SidebarFooter, sve zaštićene stranice</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">MedicineService.cs</div>
+            <div class="desc">
+                CRUD za lijekove: dodavanje, uređivanje, brisanje, smanjenje zalihe pri izdavanju.
+                Radi sa <code>medicines.json</code>.
+            </div>
+            <div class="uses">Koriste: Medicines.razor, RequestService, ReportService, NewRequest.razor</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">AmbulanceService.cs</div>
+            <div class="desc">
+                Čitanje ambulanti i dohvat naziva po ID-u. Radi sa <code>ambulances.json</code>.
+            </div>
+            <div class="uses">Koriste: NewRequest.razor, Requests.razor, ReportService</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">RequestService.cs</div>
+            <div class="desc">
+                Upravljanje zahtjevima: kreiranje, odobravanje, odbijanje, izdavanje.
+                Pri izdavanju poziva <code>MedicineService.ReduceStockAsync</code> da smanji zalihu.
+                Radi sa <code>requests.json</code>.
+            </div>
+            <div class="uses">Koriste: NewRequest.razor, MyRequests.razor, Requests.razor, ReportService</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">ReportService.cs</div>
+            <div class="desc">
+                Generiše <code>ReportSummary</code> za admin izvještaje: broj lijekova, niske zalihe,
+                statistika zahtjeva po statusu i po ambulantama.
+            </div>
+            <div class="uses">Koristi: Reports.razor</div>
+        </div>
+    </section>
+
+    <section id="components">
+        <h2>6. Components/ — korisnički interfejs (Blazor)</h2>
+
+        <h3>6.1 Osnovne komponente</h3>
+        <table>
+            <thead>
+                <tr><th>Fajl</th><th>Uloga</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="file-path">App.razor</td>
+                    <td>Korijenska HTML struktura stranice (&lt;html&gt;, &lt;head&gt;, &lt;body&gt;). Učitava CSS i <code>Routes</code>.</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Routes.razor</td>
+                    <td>Blazor router — mapira URL na stranice, primjenjuje <code>MainLayout</code>.</td>
+                </tr>
+                <tr>
+                    <td class="file-path">_Imports.razor</td>
+                    <td>Zajednički <code>using</code> direktive za sve .razor fajlove (ne mora se ponavljati u svakom).</td>
+                </tr>
+                <tr>
+                    <td class="file-path">AuthGuard.razor</td>
+                    <td>Omotač za zaštićene stranice. Provjerava prijavu i ulogu; ako nema pristup, prikazuje grešku ili preusmjerava na <code>/prijava</code>.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>6.2 Layout/</h3>
+        <table>
+            <thead>
+                <tr><th>Fajl</th><th>Uloga</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="file-path">MainLayout.razor</td>
+                    <td>Glavni layout: bočna navigacija (sidebar) sa linkovima po ulozi, područje za sadržaj stranice (<code>@Body</code>).</td>
+                </tr>
+                <tr>
+                    <td class="file-path">SidebarFooter.razor</td>
+                    <td>Donji dio sidebara: ime korisnika, uloga i link za odjavu (<code>/auth/logout</code>).</td>
+                </tr>
+                <tr>
+                    <td class="file-path">MainLayout.razor.css</td>
+                    <td>Scoped CSS stilovi specifični za layout (izolovani od globalnog CSS-a).</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>6.3 Pages/ — stranice po ulogama</h3>
+        <table>
+            <thead>
+                <tr><th>Fajl</th><th>Ruta</th><th>Uloga</th><th>Opis</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="file-path">Home.razor</td>
+                    <td><code>/</code></td>
+                    <td>Svi</td>
+                    <td>Preusmjerava prijavljenog korisnika na odgovarajuću početnu stranicu po ulozi</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Login.razor</td>
+                    <td><code>/prijava</code></td>
+                    <td>Svi</td>
+                    <td>HTML forma za prijavu — šalje POST na <code>/auth/login</code></td>
+                </tr>
+                <tr>
+                    <td class="file-path">Error.razor</td>
+                    <td><code>/Error</code></td>
+                    <td>Svi</td>
+                    <td>Stranica za prikaz grešaka u produkciji</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Admin/Medicines.razor</td>
+                    <td><code>/admin/lijekovi</code></td>
+                    <td>Administrator</td>
+                    <td>Tabela lijekova, forma za dodavanje/uređivanje/brisanje</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Admin/Reports.razor</td>
+                    <td><code>/admin/izvjestaji</code></td>
+                    <td>Administrator</td>
+                    <td>Kartice sa statistikom, tabele zaliha i zahtjeva po ambulantama</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Moderator/Requests.razor</td>
+                    <td><code>/moderator/zahtjevi</code></td>
+                    <td>Moderator</td>
+                    <td>Lista zahtjeva: odobri, odbij, izdaj lijek</td>
+                </tr>
+                <tr>
+                    <td class="file-path">User/NewRequest.razor</td>
+                    <td><code>/korisnik/novi-zahtjev</code></td>
+                    <td>Korisnik</td>
+                    <td>Forma za slanje novog zahtjeva za lijek</td>
+                </tr>
+                <tr>
+                    <td class="file-path">User/MyRequests.razor</td>
+                    <td><code>/korisnik/moji-zahtjevi</code></td>
+                    <td>Korisnik</td>
+                    <td>Pregled vlastitih zahtjeva i njihovih statusa</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="ostalo">
+        <h2>7. Ostali važni fajlovi</h2>
+
+        <table>
+            <thead>
+                <tr><th>Fajl</th><th>Opis</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="file-path">Program.cs</td>
+                    <td>
+                        <strong>Ulazna tačka aplikacije.</strong> Registruje servise (DI container),
+                        konfiguriše session, pokreće DataInitializer, mapira auth endpointe i Blazor rute.
+                    </td>
+                </tr>
+                <tr>
+                    <td class="file-path">AuthEndpoints.cs</td>
+                    <td>
+                        HTTP endpointi za prijavu (<code>POST /auth/login</code>) i odjavu (<code>GET /auth/logout</code>).
+                        Login postavlja session cookie i preusmjerava po ulozi.
+                    </td>
+                </tr>
+                <tr>
+                    <td class="file-path">DomZdravlja.csproj</td>
+                    <td>Definicija .NET 8 web projekta — target framework, SDK tip.</td>
+                </tr>
+                <tr>
+                    <td class="file-path">appsettings.json</td>
+                    <td>Opšta konfiguracija (logovanje nivoi). Nema connection stringa jer nema baze.</td>
+                </tr>
+                <tr>
+                    <td class="file-path">appsettings.Development.json</td>
+                    <td>Dodatna konfiguracija samo za development okruženje.</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Properties/launchSettings.json</td>
+                    <td>Port (<code>5141</code>), HTTPS profil, environment varijable pri pokretanju iz IDE-a.</td>
+                </tr>
+                <tr>
+                    <td class="file-path">wwwroot/app.css</td>
+                    <td>Globalni CSS: boje, layout, tabele, forme, dugmad, login stranica, responsive stilovi.</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Data/*.json</td>
+                    <td>
+                        Runtime podaci. Kreiraju se automatski. Svaki fajl = jedna kolekcija entiteta.
+                        Nisu u git-u (vidi <code>.gitignore</code>).
+                    </td>
+                </tr>
+                <tr>
+                    <td class="file-path">DomZdravlja.sln</td>
+                    <td>Visual Studio solution — grupiše projekat za otvaranje u IDE-u.</td>
+                </tr>
+                <tr>
+                    <td class="file-path">.gitignore</td>
+                    <td>Isključuje <code>bin/</code>, <code>obj/</code> i <code>Data/</code> iz verzionisanja.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="tok">
+        <h2>8. Kako fajlovi komuniciraju — primjeri toka</h2>
+
+        <h3>Prijava korisnika</h3>
+        <div class="tree">
+<span class="comment">Login.razor</span>  →  POST forma  →  <span class="comment">AuthEndpoints.cs</span> (/auth/login)
+    →  čita <span class="comment">users.json</span> preko JsonFileRepository&lt;User&gt;
+    →  postavlja session  →  redirect na stranicu po ulozi
+    →  <span class="comment">AuthService.EnsureLoadedAsync()</span> učitava korisnika iz session-a na svakoj stranici
+        </div>
+
+        <h3>Korisnik šalje zahtjev</h3>
+        <div class="tree">
+<span class="comment">NewRequest.razor</span>  →  <span class="comment">RequestService.CreateAsync()</span>
+    →  JsonFileRepository&lt;MedicationRequest&gt;  →  <span class="comment">requests.json</span>
+        </div>
+
+        <h3>Moderator izdaje lijek</h3>
+        <div class="tree">
+<span class="comment">Requests.razor</span>  →  <span class="comment">RequestService.DeliverAsync()</span>
+    →  <span class="comment">MedicineService.ReduceStockAsync()</span>  →  <span class="comment">medicines.json</span> (smanji količinu)
+    →  ažurira status u  <span class="comment">requests.json</span>
+        </div>
+
+        <h3>Admin pregleda izvještaj</h3>
+        <div class="tree">
+<span class="comment">Reports.razor</span>  →  <span class="comment">ReportService.GetSummaryAsync()</span>
+    →  čita medicines.json + requests.json + ambulances.json
+    →  vraća ReportSummary  →  prikazuje na stranici
+        </div>
+
+        <h3>Registracija servisa (dependency injection)</h3>
+        <p>U <code>Program.cs</code> servisi se registruju sa različitim životnim ciklusima:</p>
+        <table>
+            <thead>
+                <tr><th>Tip registracije</th><th>Servisi</th><th>Značenje</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Singleton</code></td>
+                    <td>JsonFileRepository, DataInitializer</td>
+                    <td>Jedna instanca za cijelu aplikaciju (dijele pristup fajlovima)</td>
+                </tr>
+                <tr>
+                    <td><code>Scoped</code></td>
+                    <td>AuthService, MedicineService, RequestService, itd.</td>
+                    <td>Nova instanca po HTTP zahtjevu / Blazor circuit-u</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+</main>
+
+<footer>
+    Dom Zdravlja — Struktura koda &nbsp;|&nbsp;
+    <a href="DOKUMENTACIJA.html" style="color: var(--primary);">Dokumentacija i test scenariji</a>
+</footer>
+
+</body>
+</html>

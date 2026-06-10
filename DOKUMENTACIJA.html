@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dom Zdravlja — Dokumentacija i test scenariji</title>
+    <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #ccfbf1;
+            --bg: #f0fdfa;
+            --surface: #ffffff;
+            --text: #134e4a;
+            --text-muted: #5f8a87;
+            --border: #99f6e4;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --success: #059669;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f766e, #134e4a);
+            color: white;
+            padding: 2.5rem 2rem;
+            text-align: center;
+        }
+
+        header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        header p { opacity: 0.85; font-size: 1.05rem; }
+
+        nav.toc {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        nav.toc a {
+            color: var(--primary-dark);
+            text-decoration: none;
+            margin-right: 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        nav.toc a:hover { text-decoration: underline; }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 20px rgba(13,148,136,0.06);
+        }
+
+        h2 {
+            color: var(--primary-dark);
+            font-size: 1.35rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-light);
+        }
+
+        h3 {
+            color: var(--primary);
+            font-size: 1.05rem;
+            margin: 1.25rem 0 0.5rem;
+        }
+
+        p { margin-bottom: 0.75rem; }
+
+        ul, ol { margin: 0.5rem 0 1rem 1.5rem; }
+        li { margin-bottom: 0.35rem; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.65rem 0.85rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            font-weight: 600;
+        }
+
+        tr:hover td { background: var(--bg); }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-admin { background: #dbeafe; color: #1e40af; }
+        .badge-mod { background: #fef3c7; color: #92400e; }
+        .badge-user { background: #d1fae5; color: #065f46; }
+
+        .flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        .flow-step {
+            background: var(--primary-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.6rem 1rem;
+            font-weight: 500;
+        }
+
+        .flow-arrow { color: var(--primary); font-size: 1.2rem; }
+
+        .scenario {
+            border-left: 4px solid var(--primary);
+            background: var(--bg);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+        }
+
+        .scenario h4 {
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .step-list {
+            list-style: none;
+            margin-left: 0;
+            counter-reset: step;
+        }
+
+        .step-list li {
+            counter-increment: step;
+            padding: 0.4rem 0 0.4rem 2rem;
+            position: relative;
+        }
+
+        .step-list li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            background: var(--primary);
+            color: white;
+            width: 1.4rem;
+            height: 1.4rem;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            top: 0.45rem;
+        }
+
+        .expected {
+            background: #ecfdf5;
+            border: 1px solid #6ee7b7;
+            border-radius: 6px;
+            padding: 0.6rem 0.85rem;
+            margin-top: 0.75rem;
+            font-size: 0.88rem;
+        }
+
+        .expected strong { color: var(--success); }
+
+        code {
+            background: var(--primary-light);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        pre {
+            background: #134e4a;
+            color: #ccfbf1;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            margin: 0.75rem 0;
+        }
+
+        .arch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .arch-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .arch-card strong {
+            display: block;
+            color: var(--primary-dark);
+            margin-bottom: 0.35rem;
+        }
+
+        .arch-card span { font-size: 0.85rem; color: var(--text-muted); }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Dom Zdravlja</h1>
+    <p>Evidencija lijekova — dokumentacija i test scenariji</p>
+</header>
+
+<nav class="toc">
+    <a href="#pregled">Pregled</a>
+    <a href="#uloge">Uloge</a>
+    <a href="#tok">Tok rada</a>
+    <a href="#pokretanje">Pokretanje</a>
+    <a href="#nalozi">Nalozi</a>
+    <a href="#stranice">Stranice</a>
+    <a href="#testovi">Test scenariji</a>
+    <a href="#struktura">Struktura</a>
+</nav>
+
+<main>
+
+    <section id="pregled">
+        <h2>1. Pregled aplikacije</h2>
+        <p>
+            <strong>Dom Zdravlja</strong> je web aplikacija za evidenciju lijekova u domu zdravlja.
+            Aplikacija radi potpuno lokalno — podaci se čuvaju u JSON fajlovima, bez baze podataka,
+            Dockera ili internetske veze.
+        </p>
+        <p>Izgrađena je u <strong>.NET 8</strong> sa <strong>Blazor Server</strong> tehnologijom.
+            Korisnički interfejs se prikazuje u web browseru, a logika se izvršava na lokalnom računaru.</p>
+
+        <div class="arch-grid">
+            <div class="arch-card">
+                <strong>Models/</strong>
+                <span>Entiteti: Lijek, Korisnik, Zahtjev, Ambulanta</span>
+            </div>
+            <div class="arch-card">
+                <strong>Services/</strong>
+                <span>Poslovna logika i čitanje/pisanje JSON fajlova</span>
+            </div>
+            <div class="arch-card">
+                <strong>Components/</strong>
+                <span>Blazor UI stranice po ulogama</span>
+            </div>
+            <div class="arch-card">
+                <strong>Data/</strong>
+                <span>users.json, medicines.json, ambulances.json, requests.json</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="uloge">
+        <h2>2. Uloge korisnika</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Uloga</th>
+                    <th>Ko je?</th>
+                    <th>Šta može?</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-admin">Administrator</span></td>
+                    <td>Upravlja zalihama u domu zdravlja</td>
+                    <td>Unosi/uređuje/briše lijekove, pregleda izvještaje o zalihama i zahtjevima</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-mod">Moderator</span></td>
+                    <td>Zadužen za distribuciju lijekova</td>
+                    <td>Pregleda zahtjeve, odobrava, odbija i izdaje lijekove ambulantama</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-user">Korisnik</span></td>
+                    <td>Doktor u ambulanti</td>
+                    <td>Šalje zahtjeve za lijekove za svoju ambulantu, prati status zahtjeva</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="tok">
+        <h2>3. Tok rada (workflow)</h2>
+        <p>Osnovni proces od zahtjeva do izdavanja lijeka:</p>
+        <div class="flow">
+            <div class="flow-step">Korisnik šalje zahtjev</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Moderator odobrava ili odbija</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Moderator izdaje lijek</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Zaliha se smanjuje</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Admin prati izvještaje</div>
+        </div>
+
+        <h3>Statusi zahtjeva</h3>
+        <table>
+            <thead>
+                <tr><th>Status</th><th>Značenje</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Na čekanju</strong></td><td>Korisnik poslao zahtjev, moderator još nije obradio</td></tr>
+                <tr><td><strong>Odobren</strong></td><td>Moderator odobrio, čeka se fizičko izdavanje</td></tr>
+                <tr><td><strong>Odbijen</strong></td><td>Moderator odbio zahtjev</td></tr>
+                <tr><td><strong>Izdato</strong></td><td>Lijek izdat ambulanti, zaliha umanjena</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="pokretanje">
+        <h2>4. Pokretanje aplikacije</h2>
+        <h3>Preduvjet</h3>
+        <p>Instaliran <a href="https://dotnet.microsoft.com/download/dotnet/8.0">.NET 8 SDK</a>. Provjera:</p>
+        <pre>dotnet --version</pre>
+
+        <h3>Koraci</h3>
+        <pre>cd DomZdravlja
+dotnet run</pre>
+
+        <p>Otvori u browseru (Chrome preporučen):</p>
+        <pre>http://localhost:5141/prijava</pre>
+
+        <p><em>Napomena: Koristi <code>http://</code> a ne <code>https://</code> u development modu.
+            Port može biti drugačiji — provjeri terminal nakon <code>dotnet run</code>.</em></p>
+    </section>
+
+    <section id="nalozi">
+        <h2>5. Demo nalozi za testiranje</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Korisničko ime</th>
+                    <th>Lozinka</th>
+                    <th>Uloga</th>
+                    <th>Ambulanta</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>admin</code></td>
+                    <td><code>admin123</code></td>
+                    <td><span class="badge badge-admin">Administrator</span></td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td><code>moderator</code></td>
+                    <td><code>mod123</code></td>
+                    <td><span class="badge badge-mod">Moderator</span></td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td><code>korisnik1</code></td>
+                    <td><code>user123</code></td>
+                    <td><span class="badge badge-user">Korisnik</span></td>
+                    <td>Opća ambulanta</td>
+                </tr>
+                <tr>
+                    <td><code>korisnik2</code></td>
+                    <td><code>user123</code></td>
+                    <td><span class="badge badge-user">Korisnik</span></td>
+                    <td>Pedijatrijska ambulanta</td>
+                </tr>
+                <tr>
+                    <td><code>korisnik3</code></td>
+                    <td><code>user123</code></td>
+                    <td><span class="badge badge-user">Korisnik</span></td>
+                    <td>Stomatološka ambulanta</td>
+                </tr>
+            </tbody>
+        </table>
+        <p><em>Napomena: Ako <code>korisnik3</code> ne radi, obriši <code>DomZdravlja/Data/users.json</code>
+            i ponovo pokreni aplikaciju da se kreiraju svi korisnici iz početnih podataka.</em></p>
+    </section>
+
+    <section id="stranice">
+        <h2>6. Stranice aplikacije</h2>
+        <table>
+            <thead>
+                <tr><th>URL</th><th>Uloga</th><th>Opis</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>/prijava</code></td><td>Svi</td><td>Stranica za prijavu</td></tr>
+                <tr><td><code>/admin/lijekovi</code></td><td>Administrator</td><td>CRUD operacije nad lijekovima</td></tr>
+                <tr><td><code>/admin/izvjestaji</code></td><td>Administrator</td><td>Pregled zaliha i statistike zahtjeva</td></tr>
+                <tr><td><code>/moderator/zahtjevi</code></td><td>Moderator</td><td>Obrada zahtjeva (odobri/odbij/izdaj)</td></tr>
+                <tr><td><code>/korisnik/novi-zahtjev</code></td><td>Korisnik</td><td>Slanje novog zahtjeva za lijek</td></tr>
+                <tr><td><code>/korisnik/moji-zahtjevi</code></td><td>Korisnik</td><td>Pregled vlastitih zahtjeva</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="testovi">
+        <h2>7. Test scenariji</h2>
+        <p>Sljedeći scenariji pokrivaju cjelokupan tok aplikacije. Preporučeno je testirati ih redom.</p>
+
+        <div class="scenario">
+            <h4>Test 1 — Prijava i kontrola pristupa</h4>
+            <ol class="step-list">
+                <li>Otvori <code>http://localhost:5141/prijava</code></li>
+                <li>Unesi pogrešne podatke (npr. <code>admin</code> / <code>pogresna</code>) i klikni Prijavi se</li>
+                <li>Unesi ispravne podatke: <code>admin</code> / <code>admin123</code></li>
+                <li>Pokušaj ručno otvoriti <code>/moderator/zahtjevi</code> dok si prijavljen kao admin</li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Pogrešna prijava prikazuje grešku.
+                Ispravna prijava vodi na stranicu Lijekovi.
+                Admin nema pristup moderator stranici (ili vidi samo svoje opcije u meniju).
+            </div>
+        </div>
+
+        <div class="scenario">
+            <h4>Test 2 — Administrator: upravljanje lijekovima</h4>
+            <ol class="step-list">
+                <li>Prijavi se kao <code>admin</code> / <code>admin123</code></li>
+                <li>Na stranici Lijekovi klikni <strong>+ Dodaj lijek</strong></li>
+                <li>Unesi: Naziv = <code>Vitamin C 500mg</code>, Jedinica = <code>tableta</code>, Količina = <code>200</code>, Min. zaliha = <code>50</code></li>
+                <li>Klikni Spremi</li>
+                <li>Uredi postojeći lijek — promijeni količinu</li>
+                <li>Idi na <strong>Izvještaji</strong> i provjeri da li se novi lijek pojavljuje</li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Novi lijek se pojavljuje u tabeli. Izmjene se čuvaju.
+                Izvještaj prikazuje ažurirano stanje zaliha.
+            </div>
+        </div>
+
+        <div class="scenario">
+            <h4>Test 3 — Korisnik: slanje zahtjeva</h4>
+            <ol class="step-list">
+                <li>Odjavi se (klikni Odjava)</li>
+                <li>Prijavi se kao <code>korisnik1</code> / <code>user123</code></li>
+                <li>Idi na <strong>Novi zahtjev</strong></li>
+                <li>Odaberi lijek <code>Paracetamol 500mg</code>, količina = <code>20</code></li>
+                <li>Klikni Pošalji zahtjev</li>
+                <li>Idi na <strong>Moji zahtjevi</strong></li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Prikazana ambulanta „Opća ambulanta".
+                Zahtjev se pojavljuje sa statusom <strong>Na čekanju</strong>.
+            </div>
+        </div>
+
+        <div class="scenario">
+            <h4>Test 4 — Moderator: odobravanje i izdavanje</h4>
+            <ol class="step-list">
+                <li>Odjavi se i prijavi kao <code>moderator</code> / <code>mod123</code></li>
+                <li>Na stranici Zahtjevi pronađi zahtjev od korisnik1</li>
+                <li>Klikni <strong>Odobri</strong></li>
+                <li>U sekciji „Odobreni" klikni <strong>Izdaj lijek</strong></li>
+                <li>Provjeri historiju — status treba biti <strong>Izdato</strong></li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Zahtjev prelazi: Na čekanju → Odobren → Izdato.
+                Zaliha Paracetamola se smanjuje za 20 (provjeri kao admin u Izvještajima).
+            </div>
+        </div>
+
+        <div class="scenario">
+            <h4>Test 5 — Moderator: odbijanje zahtjeva</h4>
+            <ol class="step-list">
+                <li>Prijavi se kao <code>korisnik2</code> / <code>user123</code></li>
+                <li>Pošalji zahtjev za <code>Ibuprofen 400mg</code>, količina = <code>10</code></li>
+                <li>Odjavi se, prijavi kao <code>moderator</code></li>
+                <li>Klikni <strong>Odbij</strong> na tom zahtjevu</li>
+                <li>Prijavi se ponovo kao <code>korisnik2</code> i provjeri Moji zahtjevi</li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Status zahtjeva je <strong>Odbijen</strong>. Zaliha Ibuprofena se ne mijenja.
+            </div>
+        </div>
+
+        <div class="scenario">
+            <h4>Test 6 — Niska zaliha (upozorenje)</h4>
+            <ol class="step-list">
+                <li>Prijavi se kao <code>admin</code></li>
+                <li>Uredi lijek <code>Hlorheksidin</code> — postavi količinu na <code>15</code> (ispod minimuma od 20)</li>
+                <li>Provjeri da li se prikazuje oznaka <strong>Niska zaliha</strong></li>
+                <li>Idi na Izvještaje i provjeri broj lijekova sa niskom zalihom</li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Lijek ima žutu oznaku „Niska zaliha". Izvještaj broji taj lijek u kategoriji niske zalihe.
+            </div>
+        </div>
+
+        <div class="scenario">
+            <h4>Test 7 — Cjelokupan end-to-end tok</h4>
+            <ol class="step-list">
+                <li><strong>Admin</strong> provjeri početne zalihe u Izvještajima (zapamti količinu Paracetamola)</li>
+                <li><strong>Korisnik3</strong> (<code>korisnik3</code> / <code>user123</code>) pošalje zahtjev za 30 tableta Paracetamola</li>
+                <li><strong>Moderator</strong> odobri i izda zahtjev</li>
+                <li><strong>Admin</strong> provjeri da je zaliha Paracetamola smanjena za 30</li>
+                <li><strong>Admin</strong> provjeri Izvještaj „Zahtjevi po ambulantama" — Stomatološka ambulanta ima +1 izdato</li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Cijeli lanac radi: zahtjev → odobrenje → izdavanje → ažurirana zaliha → ažuriran izvještaj.
+            </div>
+        </div>
+    </section>
+
+    <section id="struktura">
+        <h2>8. Struktura podataka (JSON)</h2>
+        <p>Podaci se automatski kreiraju u folderu <code>DomZdravlja/Data/</code> pri prvom pokretanju:</p>
+        <table>
+            <thead>
+                <tr><th>Fajl</th><th>Sadržaj</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>users.json</code></td><td>Korisnici, lozinke, uloge, povezana ambulanta</td></tr>
+                <tr><td><code>medicines.json</code></td><td>Lijekovi, količine, minimalne zalihe</td></tr>
+                <tr><td><code>ambulances.json</code></td><td>Lista ambulanti u domu zdravlja</td></tr>
+                <tr><td><code>requests.json</code></td><td>Svi zahtjevi za lijekove i njihovi statusi</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Početni lijekovi</h3>
+        <ul>
+            <li>Paracetamol 500mg — 500 tableta</li>
+            <li>Ibuprofen 400mg — 300 tableta</li>
+            <li>Amoxicillin 500mg — 150 kapsula</li>
+            <li>Hlorheksidin — 40 flaša</li>
+            <li>Fizološki rastvor — 200 vrećica</li>
+        </ul>
+    </section>
+
+</main>
+
+<footer>
+    Dom Zdravlja — Evidencija lijekova &nbsp;|&nbsp; .NET 8 Blazor Server &nbsp;|&nbsp; JSON file storage &nbsp;|&nbsp;
+    <a href="STRUKTURA_KODA.html" style="color: #0d9488;">Struktura koda</a>
+</footer>
+
+</body>
+</html>
