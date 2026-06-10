@@ -30,7 +30,8 @@ public class DataInitializer
                 new User { Id = 1, Username = "admin", Password = "admin123", Role = UserRole.Administrator, FullName = "Admin Korisnik" },
                 new User { Id = 2, Username = "moderator", Password = "mod123", Role = UserRole.Moderator, FullName = "Moderator Korisnik" },
                 new User { Id = 3, Username = "korisnik1", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 1, FullName = "Dr. Ana Marković" },
-                new User { Id = 4, Username = "korisnik2", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 2, FullName = "Dr. Marko Jović" }
+                new User { Id = 4, Username = "korisnik2", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 2, FullName = "Dr. Marko Jović" },
+                new User { Id = 5, Username = "korisnik3", Password = "user123", Role = UserRole.Korisnik, AmbulanceId = 3, FullName = "Dr. Ivana Petrović" }
             ]);
         }
 
