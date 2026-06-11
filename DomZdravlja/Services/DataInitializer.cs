@@ -8,17 +8,20 @@ public class DataInitializer
     private readonly JsonFileRepository<Medicine> _medicines;
     private readonly JsonFileRepository<Ambulance> _ambulances;
     private readonly JsonFileRepository<MedicationRequest> _requests;
+    private readonly JsonFileRepository<StockIntake> _stockIntakes;
 
     public DataInitializer(
         JsonFileRepository<User> users,
         JsonFileRepository<Medicine> medicines,
         JsonFileRepository<Ambulance> ambulances,
-        JsonFileRepository<MedicationRequest> requests)
+        JsonFileRepository<MedicationRequest> requests,
+        JsonFileRepository<StockIntake> stockIntakes)
     {
         _users = users;
         _medicines = medicines;
         _ambulances = ambulances;
         _requests = requests;
+        _stockIntakes = stockIntakes;
     }
 
     public async Task InitializeAsync()
@@ -71,6 +74,9 @@ public class DataInitializer
 
         if ((await _requests.GetAllAsync()).Count == 0)
             await _requests.SaveAllAsync([]);
+
+        if ((await _stockIntakes.GetAllAsync()).Count == 0)
+            await _stockIntakes.SaveAllAsync([]);
     }
 
     private async Task MigrateLegacyUsersAsync()

@@ -28,13 +28,7 @@ public static class AuthEndpoints
 
             context.Session.SetInt32(SessionKey, user.Id);
 
-            var destination = user.Role switch
-            {
-                UserRole.Administrator => "/admin/lijekovi",
-                UserRole.Moderator => "/moderator/zahtjevi",
-                UserRole.Korisnik => "/korisnik/novi-zahtjev",
-                _ => "/"
-            };
+            var destination = "/pregled";
 
             context.Response.Redirect(destination);
         }).DisableAntiforgery();

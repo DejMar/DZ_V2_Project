@@ -1,0 +1,188 @@
+@page "/prijem-zaliha"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject StockIntakeService StockIntakeService
+@inject MedicineService MedicineService
+@inject UserService UserService
+@inject AuthService Auth
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Administrator, UserRole.Moderator })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Prijem zaliha</h1>
+                <p>Evidentiranje dolaska nove robe i povećanje zaliha</p>
+            </div>
+            <button class="btn btn-primary" @onclick="ShowForm">+ Novi prijem</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-error" : "alert-success")">@_message</div>
+        }
+
+        @if (_showForm)
+        {
+            <div class="card form-card">
+                <h2>Evidentiraj prijem</h2>
+                <EditForm Model="_form" OnValidSubmit="SaveIntake">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lijek</label>
+                            <InputSelect @bind-Value="_form.MedicineId" class="form-control">
+                                <option value="0">— Odaberite lijek —</option>
+                                @foreach (var medicine in _medicines)
+                                {
+                                    <option value="@medicine.Id">@medicine.Name (@medicine.Quantity @medicine.Unit)</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="form-group">
+                            <label>Količina</label>
+                            <InputNumber @bind-Value="_form.Quantity" class="form-control" min="1" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Novi rok trajanja (opcionalno)</label>
+                            <InputDate @bind-Value="_form.UpdatedExpiryDate" class="form-control" />
+                            <small class="form-hint">Ako je naveden, ažurira rok trajanja lijeka.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Napomena</label>
+                            <InputText @bind-Value="_form.Note" class="form-control" placeholder="npr. Dobavljač, broj fakture..." />
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Spremi prijem</button>
+                        <button type="button" class="btn btn-outline" @onclick="CancelForm">Odustani</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+        <div class="card">
+            <h2>Historija prijema</h2>
+            @if (_intakes.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>Još nema evidentiranih prijema zaliha.</p>
+                </div>
+            }
+            else
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Lijek</th>
+                            <th>Količina</th>
+                            <th>Novi rok</th>
+                            <th>Evidentirao</th>
+                            <th>Napomena</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var intake in _intakes)
+                        {
+                            <tr>
+                                <td>@intake.ReceivedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@GetMedicineName(intake.MedicineId)</td>
+                                <td>@intake.Quantity @GetMedicineUnit(intake.MedicineId)</td>
+                                <td>@(intake.UpdatedExpiryDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                <td>@GetUserName(intake.ReceivedByUserId)</td>
+                                <td>@(string.IsNullOrWhiteSpace(intake.Note) ? "—" : intake.Note)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private List<StockIntake> _intakes = [];
+    private List<Medicine> _medicines = [];
+    private Dictionary<int, string> _userNames = [];
+    private bool _showForm;
+    private IntakeForm _form = new();
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        _intakes = await StockIntakeService.GetAllAsync();
+        _medicines = (await MedicineService.GetAllAsync()).OrderBy(m => m.Name).ToList();
+        _userNames = (await UserService.GetAllAsync()).ToDictionary(u => u.Id, u => u.FullName);
+    }
+
+    private void ShowForm()
+    {
+        _form = new IntakeForm();
+        _showForm = true;
+        _message = null;
+    }
+
+    private void CancelForm() => _showForm = false;
+
+    private async Task SaveIntake()
+    {
+        if (_form.MedicineId <= 0)
+        {
+            ShowMessage("Odaberite lijek.", true);
+            return;
+        }
+
+        if (_form.Quantity <= 0)
+        {
+            ShowMessage("Količina mora biti veća od nule.", true);
+            return;
+        }
+
+        var intake = new StockIntake
+        {
+            MedicineId = _form.MedicineId,
+            Quantity = _form.Quantity,
+            ReceivedByUserId = Auth.CurrentUser!.Id,
+            Note = _form.Note,
+            UpdatedExpiryDate = _form.UpdatedExpiryDate
+        };
+
+        var error = await StockIntakeService.RecordIntakeAsync(intake);
+        if (error is not null)
+        {
+            ShowMessage(error, true);
+            return;
+        }
+
+        _showForm = false;
+        await LoadData();
+        ShowMessage("Prijem zaliha je uspješno evidentiran.", false);
+    }
+
+    private string GetMedicineName(int id) =>
+        _medicines.FirstOrDefault(m => m.Id == id)?.Name ?? "Nepoznat";
+
+    private string GetMedicineUnit(int id) =>
+        _medicines.FirstOrDefault(m => m.Id == id)?.Unit ?? "kom";
+
+    private string GetUserName(int id) =>
+        _userNames.TryGetValue(id, out var name) ? name : "Nepoznat";
+
+    private void ShowMessage(string text, bool isError)
+    {
+        _message = text;
+        _isError = isError;
+    }
+
+    private class IntakeForm
+    {
+        public int MedicineId { get; set; }
+        public int Quantity { get; set; } = 1;
+        public DateTime? UpdatedExpiryDate { get; set; }
+        public string Note { get; set; } = string.Empty;
+    }
+}

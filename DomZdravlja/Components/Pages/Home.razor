@@ -14,13 +14,7 @@
             return;
         }
 
-        var destination = Auth.CurrentUser!.Role switch
-        {
-            UserRole.Administrator => "/admin/lijekovi",
-            UserRole.Moderator => "/moderator/zahtjevi",
-            UserRole.Korisnik => "/korisnik/novi-zahtjev",
-            _ => "/prijava"
-        };
+        var destination = Auth.IsAuthenticated ? "/pregled" : "/prijava";
 
         Navigation.NavigateTo(destination, forceLoad: true);
     }

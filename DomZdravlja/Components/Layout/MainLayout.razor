@@ -17,21 +17,25 @@
             </div>
 
             <nav class="sidebar-nav">
+                <NavLink href="/pregled" Match="NavLinkMatch.All">Pregled</NavLink>
+
                 @if (Auth.IsInRole(UserRole.Administrator))
                 {
-                    <NavLink href="/admin/lijekovi" Match="NavLinkMatch.All">Lijekovi</NavLink>
+                    <NavLink href="/admin/lijekovi">Lijekovi</NavLink>
+                    <NavLink href="/prijem-zaliha">Prijem zaliha</NavLink>
                     <NavLink href="/admin/korisnici">Korisnici</NavLink>
                     <NavLink href="/admin/izvjestaji">Izvještaji</NavLink>
                 }
 
                 @if (Auth.IsInRole(UserRole.Moderator))
                 {
-                    <NavLink href="/moderator/zahtjevi" Match="NavLinkMatch.All">Zahtjevi</NavLink>
+                    <NavLink href="/moderator/zahtjevi">Zahtjevi</NavLink>
+                    <NavLink href="/prijem-zaliha">Prijem zaliha</NavLink>
                 }
 
                 @if (Auth.IsInRole(UserRole.Korisnik))
                 {
-                    <NavLink href="/korisnik/novi-zahtjev" Match="NavLinkMatch.All">Novi zahtjev</NavLink>
+                    <NavLink href="/korisnik/novi-zahtjev">Novi zahtjev</NavLink>
                     <NavLink href="/korisnik/moji-zahtjevi">Moji zahtjevi</NavLink>
                 }
             </nav>

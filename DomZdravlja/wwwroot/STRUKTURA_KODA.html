@@ -258,8 +258,8 @@
     ├── <span class="file">ExportEndpoints.cs</span>      <span class="comment">← CSV i HTML izvoz izvještaja</span>
     ├── <span class="file">DomZdravlja.csproj</span>      <span class="comment">← Definicija .NET projekta</span>
     ├── <span class="file">appsettings.json</span>        <span class="comment">← Konfiguracija aplikacije</span>
-    ├── <span class="folder">Models/</span>                 <span class="comment">← Entiteti (6 fajlova)</span>
-    ├── <span class="folder">Services/</span>               <span class="comment">← Poslovna logika (10 fajlova)</span>
+    ├── <span class="folder">Models/</span>                 <span class="comment">← Entiteti (8 fajlova)</span>
+    ├── <span class="folder">Services/</span>               <span class="comment">← Poslovna logika (12 fajlova)</span>
     ├── <span class="folder">Components/</span>             <span class="comment">← Blazor UI</span>
     │   ├── <span class="file">App.razor</span>
     │   ├── <span class="file">Routes.razor</span>
@@ -272,6 +272,8 @@
     │   └── <span class="folder">Pages/</span>
     │       ├── <span class="file">Home.razor</span>
     │       ├── <span class="file">Login.razor</span>
+    │       ├── <span class="file">Dashboard.razor</span>   <span class="comment">← /pregled</span>
+    │       ├── <span class="file">PrijemZaliha.razor</span> <span class="comment">← /prijem-zaliha</span>
     │       ├── <span class="file">Error.razor</span>
     │       ├── <span class="folder">Admin/</span>
     │       │   ├── <span class="file">Medicines.razor</span>
@@ -286,7 +288,8 @@
     │   ├── <span class="file">users.json</span>
     │   ├── <span class="file">medicines.json</span>
     │   ├── <span class="file">ambulances.json</span>
-    │   └── <span class="file">requests.json</span>
+    │   ├── <span class="file">requests.json</span>
+    │   └── <span class="file">stock_intakes.json</span>
     ├── <span class="folder">wwwroot/</span>
     │   └── <span class="file">app.css</span>             <span class="comment">← Globalni CSS stilovi</span>
     └── <span class="folder">Properties/</span>
@@ -375,6 +378,16 @@
                     <td><code>ReportSummary</code>, <code>MedicineStockReport</code>, <code>AmbulanceRequestReport</code></td>
                     <td>Modeli za izvještaje: uključuje brojače isteklih lijekova i uskoro ističućih (ne čuvaju se u JSON)</td>
                 </tr>
+                <tr>
+                    <td class="file-path">StockIntake.cs</td>
+                    <td><code>StockIntake</code></td>
+                    <td>Evidentirani prijem zaliha: lijek, količina, datum, ko je uneo, napomena, opcionalni novi rok trajanja</td>
+                </tr>
+                <tr>
+                    <td class="file-path">DashboardSummary.cs</td>
+                    <td><code>DashboardSummary</code>, <code>DashboardAlert</code>, itd.</td>
+                    <td>Modeli za dashboard: obavijesti, statistika, kritični lijekovi, zahtjevi, prijemi (ne čuvaju se u JSON)</td>
+                </tr>
             </tbody>
         </table>
     </section>
@@ -397,7 +410,7 @@
             <div class="title">DataInitializer.cs</div>
             <div class="desc">
                 Pri prvom pokretanju aplikacije popunjava prazne JSON fajlove demo podacima
-                (5 korisnika, 3 ambulante, 5 lijekova sa rokom trajanja).
+                (5 korisnika, 3 ambulante, 15 lijekova sa rokom trajanja, prazan stock_intakes.json).
                 <code>MigrateLegacyUsersAsync</code> postavlja isActive=true za stare JSON fajlove.
             </div>
             <div class="uses">Poziva: Program.cs pri startu</div>
@@ -466,6 +479,24 @@
             </div>
             <div class="uses">Koristi: ExportEndpoints.cs</div>
         </div>
+
+        <div class="file-card">
+            <div class="title">StockIntakeService.cs</div>
+            <div class="desc">
+                Evidentiranje prijema zaliha: <code>RecordIntakeAsync()</code> snima zapis i povećava zalihu lijeka.
+                Opcionalno ažurira rok trajanja. Radi sa <code>stock_intakes.json</code>.
+            </div>
+            <div class="uses">Koriste: PrijemZaliha.razor, DashboardService</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">DashboardService.cs</div>
+            <div class="desc">
+                Generiše <code>DashboardSummary</code> po ulozi: admin (kritični lijekovi, pending, prijemi),
+                moderator (zahtjevi na čekanju, stariji od 2 dana, odobreni), korisnik (statistika vlastitih zahtjeva).
+            </div>
+            <div class="uses">Koristi: Dashboard.razor</div>
+        </div>
     </section>
 
     <section id="components">
@@ -504,7 +535,7 @@
             <tbody>
                 <tr>
                     <td class="file-path">MainLayout.razor</td>
-                    <td>Glavni layout: sidebar sa linkovima (Lijekovi, Korisnici, Izvještaji za admina), područje <code>@Body</code>.</td>
+                    <td>Glavni layout: sidebar sa linkovima (Pregled, Lijekovi, Prijem zaliha, Korisnici, Izvještaji za admina), područje <code>@Body</code>.</td>
                 </tr>
                 <tr>
                     <td class="file-path">SidebarFooter.razor</td>
@@ -527,7 +558,19 @@
                     <td class="file-path">Home.razor</td>
                     <td><code>/</code></td>
                     <td>Svi</td>
-                    <td>Preusmjerava prijavljenog korisnika na odgovarajuću početnu stranicu po ulozi</td>
+                    <td>Preusmjerava prijavljenog korisnika na <code>/pregled</code></td>
+                </tr>
+                <tr>
+                    <td class="file-path">Dashboard.razor</td>
+                    <td><code>/pregled</code></td>
+                    <td>Svi</td>
+                    <td>Centralni dashboard sa obavijestima prilagođenim ulozi</td>
+                </tr>
+                <tr>
+                    <td class="file-path">PrijemZaliha.razor</td>
+                    <td><code>/prijem-zaliha</code></td>
+                    <td>Admin, Moderator</td>
+                    <td>Forma za prijem zaliha i tabela historije prijema</td>
                 </tr>
                 <tr>
                     <td class="file-path">Login.razor</td>
@@ -672,6 +715,16 @@
                     <td><code>ReportExportService.cs</code>, <code>ExportEndpoints.cs</code>, <code>Reports.razor</code></td>
                     <td>CSV download i HTML izvještaj za PDF štampu</td>
                 </tr>
+                <tr>
+                    <td><strong>Centralni dashboard</strong></td>
+                    <td><code>Dashboard.razor</code>, <code>DashboardService.cs</code>, <code>DashboardSummary.cs</code></td>
+                    <td>Obavijesti i pregled po ulozi na <code>/pregled</code></td>
+                </tr>
+                <tr>
+                    <td><strong>Prijem zaliha</strong></td>
+                    <td><code>PrijemZaliha.razor</code>, <code>StockIntakeService.cs</code>, <code>StockIntake.cs</code></td>
+                    <td>Evidentiranje dolaska robe, povećanje zalihe, historija u <code>stock_intakes.json</code></td>
+                </tr>
             </tbody>
         </table>
     </section>
@@ -683,8 +736,22 @@
         <div class="tree">
 <span class="comment">Login.razor</span>  →  POST forma  →  <span class="comment">AuthEndpoints.cs</span> (/auth/login)
     →  čita <span class="comment">users.json</span> preko JsonFileRepository&lt;User&gt;
-    →  postavlja session  →  redirect na stranicu po ulozi
+    →  postavlja session  →  redirect na <code>/pregled</code>
     →  <span class="comment">AuthService.EnsureLoadedAsync()</span> učitava korisnika iz session-a na svakoj stranici
+        </div>
+
+        <h3>Admin/Moderator evidentira prijem zaliha</h3>
+        <div class="tree">
+<span class="comment">PrijemZaliha.razor</span>  →  <span class="comment">StockIntakeService.RecordIntakeAsync()</span>
+    →  snima u <span class="comment">stock_intakes.json</span>
+    →  <span class="comment">MedicineService.UpdateAsync()</span> povećava zalihu u <span class="comment">medicines.json</span>
+        </div>
+
+        <h3>Korisnik otvara dashboard</h3>
+        <div class="tree">
+<span class="comment">Dashboard.razor</span>  →  <span class="comment">DashboardService.Get*DashboardAsync()</span>
+    →  agregira podatke iz medicines, requests, stock_intakes
+    →  vraća DashboardSummary sa obavijestima po ulozi
         </div>
 
         <h3>Korisnik šalje zahtjev</h3>
@@ -735,7 +802,7 @@
                 </tr>
                 <tr>
                     <td><code>Scoped</code></td>
-                    <td>AuthService, UserService, MedicineService, RequestService, ReportExportService, itd.</td>
+                    <td>AuthService, UserService, MedicineService, RequestService, ReportExportService, StockIntakeService, DashboardService, itd.</td>
                     <td>Nova instanca po HTTP zahtjevu / Blazor circuit-u</td>
                 </tr>
             </tbody>

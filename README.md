@@ -6,9 +6,9 @@ Jednostavna C# Blazor aplikacija za evidenciju lijekova u domu zdravlja. Podaci 
 
 | Uloga | Opis |
 |-------|------|
-| **Administrator** | Upravlja lijekovima i korisnicima, pregleda izvještaje i izvozi podatke |
-| **Moderator** | Odobrava, odbija i izdaje lijekove ambulantama (ne može izdati istekle lijekove) |
-| **Korisnik** | Šalje zahtjeve za lijekove za svoju ambulantu i prati njihov status |
+| **Administrator** | Upravlja lijekovima i korisnicima, evidentira prijem zaliha, pregleda dashboard i izvještaje |
+| **Moderator** | Odobrava, odbija i izdaje lijekove, evidentira prijem zaliha, prati obavijesti na dashboardu |
+| **Korisnik** | Šalje zahtjeve za lijekove za svoju ambulantu i prati njihov status na dashboardu |
 
 ## Funkcionalnosti
 
@@ -20,6 +20,8 @@ Jednostavna C# Blazor aplikacija za evidenciju lijekova u domu zdravlja. Podaci 
 - Upozorenje za nisku zalihu
 
 ### Nove funkcionalnosti
+- **Centralni dashboard** (`/pregled`) — obavijesti i pregled po ulozi (kritični lijekovi, pending zahtjevi, status korisnika)
+- **Prijem zaliha** (`/prijem-zaliha`) — evidentiranje dolaska robe, povećanje zalihe, historija prijema (admin i moderator)
 - **Upravljanje korisnicima** (`/admin/korisnici`) — dodavanje, uređivanje, aktivacija/deaktivacija naloga
 - **Rok trajanja lijekova** — praćenje isteka, upozorenje „Ističe uskoro" (30 dana), blokada izdavanja isteklih lijekova
 - **Izvoz izvještaja** — preuzimanje CSV fajla i HTML izvještaja za PDF štampu
@@ -104,6 +106,8 @@ Aplikacija je dostupna na **http://localhost:5141** — stranica za prijavu: **h
 | URL | Uloga | Opis |
 |-----|-------|------|
 | `/prijava` | Svi | Prijava + linkovi na dokumentaciju |
+| `/pregled` | Svi | Centralni dashboard sa obavijestima (po ulozi) |
+| `/prijem-zaliha` | Admin, Moderator | Evidentiranje dolaska robe i historija prijema |
 | `/admin/lijekovi` | Administrator | Upravljanje lijekovima i rokom trajanja |
 | `/admin/korisnici` | Administrator | Upravljanje korisnicima |
 | `/admin/izvjestaji` | Administrator | Izvještaji i izvoz CSV/PDF |
@@ -140,21 +144,25 @@ DZ_V2_Project/
     │   └── Pages/
     │       ├── Admin/          # Lijekovi, Korisnici, Izvještaji
     │       ├── Moderator/      # Zahtjevi
-    │       └── User/           # Novi zahtjev, Moji zahtjevi
+    │       ├── User/           # Novi zahtjev, Moji zahtjevi
+    │       ├── Dashboard.razor # Centralni pregled (/pregled)
+    │       └── PrijemZaliha.razor
     ├── wwwroot/                # CSS, HTML dokumentacija
     └── Data/                   # JSON fajlovi (runtime)
         ├── users.json
         ├── medicines.json
         ├── ambulances.json
-        └── requests.json
+        ├── requests.json
+        └── stock_intakes.json
 ```
 
 ## Tok rada
 
-1. **Korisnik** pošalje zahtjev za lijek
-2. **Moderator** odobri ili odbije zahtjev
-3. **Moderator** izda lijek ambulanti (smanjuje se zaliha; istekli lijekovi se ne mogu izdati)
-4. **Administrator** prati stanje zaliha, upravlja korisnicima i izvozi izvještaje
+1. **Administrator/Moderator** evidentira prijem zaliha kad stigne nova pošiljka (povećava se zaliha)
+2. **Korisnik** pošalje zahtjev za lijek
+3. **Moderator** odobri ili odbije zahtjev
+4. **Moderator** izda lijek ambulanti (smanjuje se zaliha; istekli lijekovi se ne mogu izdati)
+5. **Svi korisnici** prate obavijesti na dashboardu (`/pregled`); **Administrator** upravlja korisnicima i izvozi izvještaje
 
 ## Tehnologije
 

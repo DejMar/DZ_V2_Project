@@ -1,0 +1,326 @@
+@page "/pregled"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject DashboardService DashboardService
+@inject AuthService Auth
+
+<AuthGuard>
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Pregled</h1>
+                <p>@GetSubtitle()</p>
+            </div>
+            <button class="btn btn-outline" @onclick="LoadDashboard">Osvježi</button>
+        </div>
+
+        @if (_summary is not null)
+        {
+            @if (_summary.Alerts.Count > 0)
+            {
+                <div class="notification-list">
+                    @foreach (var alert in _summary.Alerts)
+                    {
+                        <div class="notification-item @($"notification-{alert.Severity}")">
+                            <span>@alert.Message</span>
+                            @if (!string.IsNullOrEmpty(alert.Link))
+                            {
+                                <a href="@alert.Link" class="notification-link">@(alert.LinkText ?? "Otvori")</a>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (Auth.IsInRole(UserRole.Administrator))
+            {
+                <div class="stats-grid">
+                    <div class="stat-card warning">
+                        <span class="stat-value">@_summary.Stats.ExpiredCount</span>
+                        <span class="stat-label">Istekli lijekovi</span>
+                    </div>
+                    <div class="stat-card warning">
+                        <span class="stat-value">@_summary.Stats.ExpiringSoonCount</span>
+                        <span class="stat-label">Ističe uskoro</span>
+                    </div>
+                    <div class="stat-card warning">
+                        <span class="stat-value">@_summary.Stats.LowStockCount</span>
+                        <span class="stat-label">Niska zaliha</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">@_summary.Stats.PendingRequests</span>
+                        <span class="stat-label">Zahtjevi na čekanju</span>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    @if (_summary.CriticalMedicines.Count > 0)
+                    {
+                        <div class="card">
+                            <h2>Kritični lijekovi</h2>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Lijek</th>
+                                        <th>Zaliha</th>
+                                        <th>Rok</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in _summary.CriticalMedicines)
+                                    {
+                                        <tr>
+                                            <td>@item.Name</td>
+                                            <td>@item.Quantity @item.Unit</td>
+                                            <td>@(item.ExpiryDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                            <td><span class="badge @GetMedicineStatusClass(item.Status)">@item.Status</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    @if (_summary.RecentIntakes.Count > 0)
+                    {
+                        <div class="card">
+                            <h2>Posljednji prijemi zaliha</h2>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Lijek</th>
+                                        <th>Količina</th>
+                                        <th>Evidentirao</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var intake in _summary.RecentIntakes)
+                                    {
+                                        <tr>
+                                            <td>@intake.ReceivedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                            <td>@intake.MedicineName</td>
+                                            <td>@intake.Quantity @intake.Unit</td>
+                                            <td>@intake.ReceivedByName</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                            <div class="report-summary">
+                                <a href="/prijem-zaliha">Pogledaj sve prijeme →</a>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (_summary.PendingRequests.Count > 0)
+                {
+                    <div class="card">
+                        <h2>Zahtjevi na čekanju</h2>
+                        @RenderRequestTable(_summary.PendingRequests)
+                    </div>
+                }
+            }
+            else if (Auth.IsInRole(UserRole.Moderator))
+            {
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-value">@_summary.Stats.PendingRequests</span>
+                        <span class="stat-label">Na čekanju</span>
+                    </div>
+                    <div class="stat-card warning">
+                        <span class="stat-value">@_summary.Stats.OldPendingRequests</span>
+                        <span class="stat-label">Stariji od 2 dana</span>
+                    </div>
+                    <div class="stat-card warning">
+                        <span class="stat-value">@_summary.Stats.ApprovedAwaitingDelivery</span>
+                        <span class="stat-label">Odobreno, čeka izdavanje</span>
+                    </div>
+                </div>
+
+                @if (_summary.PendingRequests.Count > 0)
+                {
+                    <div class="card">
+                        <h2>Zahtjevi za obradu</h2>
+                        @RenderRequestTable(_summary.PendingRequests, showDaysWaiting: true)
+                        <div class="report-summary">
+                            <a href="/moderator/zahtjevi">Otvori stranicu zahtjeva →</a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card">
+                        <div class="empty-state">
+                            <p>Nema zahtjeva na čekanju.</p>
+                        </div>
+                    </div>
+                }
+            }
+            else if (Auth.IsInRole(UserRole.Korisnik))
+            {
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-value">@_summary.Stats.UserPendingCount</span>
+                        <span class="stat-label">Na čekanju</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">@_summary.Stats.UserApprovedCount</span>
+                        <span class="stat-label">Odobreno</span>
+                    </div>
+                    <div class="stat-card success">
+                        <span class="stat-value">@_summary.Stats.UserDeliveredCount</span>
+                        <span class="stat-label">Izdato</span>
+                    </div>
+                    <div class="stat-card warning">
+                        <span class="stat-value">@_summary.Stats.UserRejectedCount</span>
+                        <span class="stat-label">Odbijeno</span>
+                    </div>
+                </div>
+
+                @if (_summary.RecentUserRequests.Count > 0)
+                {
+                    <div class="card">
+                        <h2>Posljednji zahtjevi</h2>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Datum</th>
+                                    <th>Lijek</th>
+                                    <th>Količina</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var request in _summary.RecentUserRequests)
+                                {
+                                    <tr>
+                                        <td>@request.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                        <td>@request.MedicineName</td>
+                                        <td>@request.Quantity</td>
+                                        <td><span class="badge @GetRequestStatusClass(request.Status)">@GetRequestStatusLabel(request.Status)</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        <div class="report-summary">
+                            <a href="/korisnik/moji-zahtjevi">Svi moji zahtjevi →</a>
+                            ·
+                            <a href="/korisnik/novi-zahtjev">Novi zahtjev</a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card">
+                        <div class="empty-state">
+                            <p>Još niste poslali nijedan zahtjev.</p>
+                            <a href="/korisnik/novi-zahtjev" class="btn btn-primary">Kreiraj prvi zahtjev</a>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+</AuthGuard>
+
+@code {
+    private DashboardSummary? _summary;
+
+    protected override async Task OnInitializedAsync() => await LoadDashboard();
+
+    private async Task LoadDashboard()
+    {
+        if (Auth.CurrentUser is null)
+            return;
+
+        _summary = Auth.CurrentUser.Role switch
+        {
+            UserRole.Administrator => await DashboardService.GetAdminDashboardAsync(),
+            UserRole.Moderator => await DashboardService.GetModeratorDashboardAsync(),
+            UserRole.Korisnik => await DashboardService.GetUserDashboardAsync(Auth.CurrentUser.Id),
+            _ => new DashboardSummary()
+        };
+    }
+
+    private string GetSubtitle() => Auth.CurrentUser?.Role switch
+    {
+        UserRole.Administrator => "Obavijesti o zalihama, rokovima trajanja i zahtjevima",
+        UserRole.Moderator => "Pregled zahtjeva koji zahtijevaju vašu pažnju",
+        UserRole.Korisnik => "Status vaših zahtjeva za lijekove",
+        _ => "Pregled"
+    };
+
+    private RenderFragment RenderRequestTable(List<DashboardRequestItem> requests, bool showDaysWaiting = false) => builder =>
+    {
+        var seq = 0;
+        builder.OpenElement(seq++, "table");
+        builder.AddAttribute(seq++, "class", "data-table");
+
+        builder.OpenElement(seq++, "thead");
+        builder.OpenElement(seq++, "tr");
+        foreach (var header in showDaysWaiting
+            ? new[] { "Datum", "Ambulanta", "Lijek", "Količina", "Čeka (dana)" }
+            : new[] { "Datum", "Ambulanta", "Lijek", "Količina" })
+        {
+            builder.OpenElement(seq++, "th");
+            builder.AddContent(seq++, header);
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "tbody");
+        foreach (var request in requests)
+        {
+            builder.OpenElement(seq++, "tr");
+            builder.OpenElement(seq++, "td");
+            builder.AddContent(seq++, request.CreatedAt.ToString("dd.MM.yyyy HH:mm"));
+            builder.CloseElement();
+            builder.OpenElement(seq++, "td");
+            builder.AddContent(seq++, request.AmbulanceName);
+            builder.CloseElement();
+            builder.OpenElement(seq++, "td");
+            builder.AddContent(seq++, request.MedicineName);
+            builder.CloseElement();
+            builder.OpenElement(seq++, "td");
+            builder.AddContent(seq++, request.Quantity);
+            builder.CloseElement();
+            if (showDaysWaiting)
+            {
+                builder.OpenElement(seq++, "td");
+                builder.AddContent(seq++, request.DaysWaiting);
+                builder.CloseElement();
+            }
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    private static string GetMedicineStatusClass(string status) => status switch
+    {
+        "Istekao" => "badge-danger",
+        "Ističe uskoro" => "badge-warning",
+        _ => "badge-warning"
+    };
+
+    private static string GetRequestStatusLabel(RequestStatus status) => status switch
+    {
+        RequestStatus.NaCekanju => "Na čekanju",
+        RequestStatus.Odobren => "Odobren",
+        RequestStatus.Odbijen => "Odbijen",
+        RequestStatus.Izdato => "Izdato",
+        _ => status.ToString()
+    };
+
+    private static string GetRequestStatusClass(RequestStatus status) => status switch
+    {
+        RequestStatus.NaCekanju => "badge-info",
+        RequestStatus.Odobren => "badge-info",
+        RequestStatus.Odbijen => "badge-danger",
+        RequestStatus.Izdato => "badge-success",
+        _ => "badge-info"
+    };
+}

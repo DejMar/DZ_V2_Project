@@ -290,7 +290,7 @@
             </div>
             <div class="arch-card">
                 <strong>Data/</strong>
-                <span>users.json, medicines.json, ambulances.json, requests.json</span>
+                <span>users.json, medicines.json, ambulances.json, requests.json, stock_intakes.json</span>
             </div>
         </div>
     </section>
@@ -309,17 +309,17 @@
                 <tr>
                     <td><span class="badge badge-admin">Administrator</span></td>
                     <td>Upravlja zalihama u domu zdravlja</td>
-                    <td>Unosi/uređuje/briše lijekove, upravlja korisnicima, pregleda i izvozi izvještaje</td>
+                    <td>Unosi/uređuje/briše lijekove, evidentira prijem zaliha, upravlja korisnicima, pregleda dashboard i izvozi izvještaje</td>
                 </tr>
                 <tr>
                     <td><span class="badge badge-mod">Moderator</span></td>
                     <td>Zadužen za distribuciju lijekova</td>
-                    <td>Pregleda zahtjeve, odobrava, odbija i izdaje lijekove (ne može izdati istekle)</td>
+                    <td>Pregleda dashboard i zahtjeve, odobrava, odbija i izdaje lijekove, evidentira prijem zaliha (ne može izdati istekle)</td>
                 </tr>
                 <tr>
                     <td><span class="badge badge-user">Korisnik</span></td>
                     <td>Doktor u ambulanti</td>
-                    <td>Šalje zahtjeve za lijekove za svoju ambulantu, prati status zahtjeva</td>
+                    <td>Prati dashboard sa statusom zahtjeva, šalje zahtjeve za lijekove za svoju ambulantu</td>
                 </tr>
             </tbody>
         </table>
@@ -329,6 +329,8 @@
         <h2>3. Tok rada (workflow)</h2>
         <p>Osnovni proces od zahtjeva do izdavanja lijeka:</p>
         <div class="flow">
+            <div class="flow-step">Admin/Mod. evidentira prijem zaliha</div>
+            <span class="flow-arrow">→</span>
             <div class="flow-step">Korisnik šalje zahtjev</div>
             <span class="flow-arrow">→</span>
             <div class="flow-step">Moderator odobrava ili odbija</div>
@@ -337,7 +339,7 @@
             <span class="flow-arrow">→</span>
             <div class="flow-step">Zaliha se smanjuje</div>
             <span class="flow-arrow">→</span>
-            <div class="flow-step">Admin prati izvještaje</div>
+            <div class="flow-step">Dashboard prikazuje obavijesti</div>
         </div>
 
         <h3>Statusi lijekova</h3>
@@ -458,7 +460,23 @@ dotnet run</pre>
             <li><strong>Preuzmi CSV</strong> — izvještaj za Excel (zalije, zahtjevi, statistika)</li>
             <li><strong>Izvještaj (PDF)</strong> — otvara štampani HTML izvještaj (Ctrl+P → Sačuvaj kao PDF)</li>
         </ul>
-        <p>Export zahtijeva prijavu kao administrator (session cookie).</p>
+        <h3>6.4 Centralni dashboard</h3>
+        <p>Stranica <code>/pregled</code> prikazuje obavijesti prilagođene ulozi:</p>
+        <ul>
+            <li><strong>Administrator</strong> — istekli lijekovi, ističe uskoro, niska zaliha, pending zahtjevi, kritični lijekovi, posljednji prijemi zaliha</li>
+            <li><strong>Moderator</strong> — broj zahtjeva na čekanju, zahtjevi stariji od 2 dana, odobreni koji čekaju izdavanje</li>
+            <li><strong>Korisnik</strong> — statistika vlastitih zahtjeva i posljednjih 5 zahtjeva sa statusom</li>
+        </ul>
+        <p>Nakon prijave korisnik se automatski preusmjerava na dashboard.</p>
+
+        <h3>6.5 Prijem zaliha</h3>
+        <p>Administrator i moderator na stranici <code>/prijem-zaliha</code> mogu:</p>
+        <ul>
+            <li>evidentirati dolazak nove robe (lijek, količina, opcionalni novi rok trajanja, napomena)</li>
+            <li>automatski povećati zalihu odabranog lijeka</li>
+            <li>pregledati historiju svih prijema (datum, ko je uneo, količina)</li>
+        </ul>
+        <p>Podaci se čuvaju u <code>stock_intakes.json</code>.</p>
     </section>
 
     <section id="stranice">
@@ -469,6 +487,8 @@ dotnet run</pre>
             </thead>
             <tbody>
                 <tr><td><code>/prijava</code></td><td>Svi</td><td>Stranica za prijavu</td></tr>
+                <tr><td><code>/pregled</code></td><td>Svi</td><td>Centralni dashboard sa obavijestima (po ulozi)</td></tr>
+                <tr><td><code>/prijem-zaliha</code></td><td>Admin, Moderator</td><td>Evidentiranje dolaska robe i historija prijema</td></tr>
                 <tr><td><code>/admin/lijekovi</code></td><td>Administrator</td><td>CRUD nad lijekovima (uključujući rok trajanja)</td></tr>
                 <tr><td><code>/admin/korisnici</code></td><td>Administrator</td><td>Upravljanje korisnicima i ulogama</td></tr>
                 <tr><td><code>/admin/izvjestaji</code></td><td>Administrator</td><td>Pregled zaliha, statistike i izvoz CSV/PDF</td></tr>
@@ -495,7 +515,7 @@ dotnet run</pre>
             </ol>
             <div class="expected">
                 <strong>Očekivano:</strong> Pogrešna prijava prikazuje grešku.
-                Ispravna prijava vodi na stranicu Lijekovi.
+                Ispravna prijava vodi na stranicu <strong>Pregled</strong> (dashboard).
                 Admin nema pristup moderator stranici (ili vidi samo svoje opcije u meniju).
             </div>
         </div>
@@ -616,6 +636,36 @@ dotnet run</pre>
                 <strong>Očekivano:</strong> Cijeli lanac radi: zahtjev → odobrenje → izdavanje → ažurirana zaliha → ažuriran izvještaj.
             </div>
         </div>
+
+        <div class="scenario">
+            <h4>Test 10 — Dashboard obavijesti</h4>
+            <ol class="step-list">
+                <li>Prijavi se kao <code>admin</code> / <code>admin123</code></li>
+                <li>Provjeri da si na stranici <strong>Pregled</strong> (<code>/pregled</code>)</li>
+                <li>Provjeri obavijesti o isteklim lijekovima, niskoj zalihi i pending zahtjevima</li>
+                <li>Odjavi se i prijavi kao <code>moderator</code> — provjeri brojače zahtjeva na čekanju</li>
+                <li>Odjavi se i prijavi kao <code>korisnik1</code> — provjeri statistiku vlastitih zahtjeva</li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Svaka uloga vidi dashboard prilagođen svojim ovlaštenjima. Obavijesti imaju linkove na relevantne stranice.
+            </div>
+        </div>
+
+        <div class="scenario">
+            <h4>Test 11 — Prijem zaliha</h4>
+            <ol class="step-list">
+                <li>Prijavi se kao <code>admin</code></li>
+                <li>Idi na <strong>Prijem zaliha</strong> (<code>/prijem-zaliha</code>)</li>
+                <li>Zapamti trenutnu zalihu <code>Ibuprofen 400mg</code> na stranici Lijekovi</li>
+                <li>Klikni <strong>+ Novi prijem</strong> — odaberi Ibuprofen, količina = <code>100</code>, napomena = <code>Test prijem</code></li>
+                <li>Klikni Spremi prijem</li>
+                <li>Provjeri historiju prijema i zalihu na stranici Lijekovi</li>
+                <li>Odjavi se, prijavi kao <code>moderator</code> i provjeri da i moderator može pristupiti Prijem zaliha</li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Zaliha Ibuprofena se povećava za 100. Prijem se pojavljuje u historiji sa imenom korisnika koji ga je uneo. Dashboard admina prikazuje posljednji prijem.
+            </div>
+        </div>
     </section>
 
     <section id="struktura">
@@ -630,16 +680,16 @@ dotnet run</pre>
                 <tr><td><code>medicines.json</code></td><td>Lijekovi, količine, minimalne zalihe, expiryDate (rok trajanja)</td></tr>
                 <tr><td><code>ambulances.json</code></td><td>Lista ambulanti u domu zdravlja</td></tr>
                 <tr><td><code>requests.json</code></td><td>Svi zahtjevi za lijekove i njihovi statusi</td></tr>
+                <tr><td><code>stock_intakes.json</code></td><td>Historija prijema zaliha (lijek, količina, datum, ko je uneo, napomena)</td></tr>
             </tbody>
         </table>
 
-        <h3>Početni lijekovi (sa rokom trajanja)</h3>
+        <h3>Početni lijekovi (15 komada, sa rokom trajanja)</h3>
         <ul>
-            <li>Paracetamol 500mg — 500 tableta (rok: +18 mjeseci)</li>
-            <li>Ibuprofen 400mg — 300 tableta (rok: +12 mjeseci)</li>
-            <li>Amoxicillin 500mg — 150 kapsula (rok: +20 dana — <em>ističe uskoro</em>)</li>
-            <li>Hlorheksidin — 40 flaša (rok: prošao — <em>istekao</em>)</li>
-            <li>Fizološki rastvor — 200 vrećica (rok: +24 mjeseca)</li>
+            <li>Paracetamol 500mg, Ibuprofen 400mg, Amoxicillin 500mg, Hlorheksidin, Fizološki rastvor</li>
+            <li>Aspirin 100mg, Omeprazol 20mg, Loperamid 2mg, Cetirizin 10mg, Metformin 500mg</li>
+            <li>Salbutamol inhalator, Diazepam 5mg, Hidrokortizon krema 1%, Rukavice lateks, Vitamin D3 1000 IU</li>
+            <li><em>Hlorheksidin</em> — istekao; <em>Amoxicillin</em> — ističe uskoro (demo podaci)</li>
         </ul>
     </section>
 

@@ -25,6 +25,8 @@ builder.Services.AddSingleton<JsonFileRepository<Ambulance>>(sp =>
     new JsonFileRepository<Ambulance>(sp.GetRequiredService<IWebHostEnvironment>(), "ambulances.json"));
 builder.Services.AddSingleton<JsonFileRepository<MedicationRequest>>(sp =>
     new JsonFileRepository<MedicationRequest>(sp.GetRequiredService<IWebHostEnvironment>(), "requests.json"));
+builder.Services.AddSingleton<JsonFileRepository<StockIntake>>(sp =>
+    new JsonFileRepository<StockIntake>(sp.GetRequiredService<IWebHostEnvironment>(), "stock_intakes.json"));
 
 builder.Services.AddSingleton<DataInitializer>();
 builder.Services.AddScoped<AuthService>();
@@ -34,6 +36,8 @@ builder.Services.AddScoped<RequestService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ReportExportService>();
+builder.Services.AddScoped<StockIntakeService>();
+builder.Services.AddScoped<DashboardService>();
 
 var app = builder.Build();
 

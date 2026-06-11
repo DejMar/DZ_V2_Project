@@ -411,6 +411,65 @@ a {
     background: #ecfdf5;
 }
 
+.stat-card.danger {
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
+
+/* Notifications */
+.notification-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.notification-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    font-size: 0.95rem;
+}
+
+.notification-info {
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.notification-warning {
+    border-color: #fcd34d;
+    background: #fffbeb;
+}
+
+.notification-danger {
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
+
+.notification-success {
+    border-color: #6ee7b7;
+    background: #ecfdf5;
+}
+
+.notification-link {
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 .stat-value {
     display: block;
     font-size: 2rem;
