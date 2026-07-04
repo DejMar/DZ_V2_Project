@@ -26,6 +26,3 @@ artifacts/
 
 *.nupkg
 *.snupkg
-
-# JSON data files (runtime generated)
-DomZdravlja/Data/
