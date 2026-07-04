@@ -1,53 +1,61 @@
+using DomZdravlja.Data;
 using DomZdravlja.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DomZdravlja.Services;
 
 public class MedicineService
 {
-    private readonly JsonFileRepository<Medicine> _repository;
+    private readonly IDbContextFactory<AppDbContext> _contextFactory;
 
-    public MedicineService(JsonFileRepository<Medicine> repository) => _repository = repository;
+    public MedicineService(IDbContextFactory<AppDbContext> contextFactory) => _contextFactory = contextFactory;
 
-    public Task<List<Medicine>> GetAllAsync() => _repository.GetAllAsync();
+    public async Task<List<Medicine>> GetAllAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Medicines.AsNoTracking().OrderBy(m => m.Name).ToListAsync();
+    }
 
-    public async Task<Medicine?> GetByIdAsync(int id) =>
-        (await _repository.GetAllAsync()).FirstOrDefault(m => m.Id == id);
+    public async Task<Medicine?> GetByIdAsync(int id)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Medicines.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
+    }
 
     public async Task AddAsync(Medicine medicine)
     {
-        var medicines = await _repository.GetAllAsync();
-        medicine.Id = medicines.Count == 0 ? 1 : medicines.Max(m => m.Id) + 1;
-        medicines.Add(medicine);
-        await _repository.SaveAllAsync(medicines);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        context.Medicines.Add(medicine);
+        await context.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(Medicine medicine)
     {
-        var medicines = await _repository.GetAllAsync();
-        var index = medicines.FindIndex(m => m.Id == medicine.Id);
-        if (index >= 0)
-        {
-            medicines[index] = medicine;
-            await _repository.SaveAllAsync(medicines);
-        }
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        context.Medicines.Update(medicine);
+        await context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(int id)
     {
-        var medicines = await _repository.GetAllAsync();
-        medicines.RemoveAll(m => m.Id == id);
-        await _repository.SaveAllAsync(medicines);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var medicine = await context.Medicines.FindAsync(id);
+        if (medicine is null)
+            return;
+
+        context.Medicines.Remove(medicine);
+        await context.SaveChangesAsync();
     }
 
     public async Task<bool> ReduceStockAsync(int medicineId, int quantity)
     {
-        var medicines = await _repository.GetAllAsync();
-        var medicine = medicines.FirstOrDefault(m => m.Id == medicineId);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var medicine = await context.Medicines.FindAsync(medicineId);
         if (medicine is null || medicine.Quantity < quantity)
             return false;
 
         medicine.Quantity -= quantity;
-        await _repository.SaveAllAsync(medicines);
+        await context.SaveChangesAsync();
         return true;
     }
 }

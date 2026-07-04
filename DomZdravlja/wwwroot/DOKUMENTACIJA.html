@@ -269,8 +269,8 @@
         <h2>1. Pregled aplikacije</h2>
         <p>
             <strong>Dom Zdravlja</strong> je web aplikacija za evidenciju lijekova u domu zdravlja.
-            Aplikacija radi potpuno lokalno — podaci se čuvaju u JSON fajlovima, bez baze podataka,
-            Dockera ili internetske veze.
+            Aplikacija koristi lokalnu MySQL bazu podataka, a pristup podacima je implementiran
+            preko Entity Framework Core-a.
         </p>
         <p>Izgrađena je u <strong>.NET 8</strong> sa <strong>Blazor Server</strong> tehnologijom.
             Korisnički interfejs se prikazuje u web browseru, a logika se izvršava na lokalnom računaru.</p>
@@ -282,7 +282,7 @@
             </div>
             <div class="arch-card">
                 <strong>Services/</strong>
-                <span>Poslovna logika i čitanje/pisanje JSON fajlova</span>
+                <span>Poslovna logika i rad sa MySQL bazom preko EF Core-a</span>
             </div>
             <div class="arch-card">
                 <strong>Components/</strong>
@@ -290,7 +290,7 @@
             </div>
             <div class="arch-card">
                 <strong>Data/</strong>
-                <span>users.json, medicines.json, ambulances.json, requests.json, stock_intakes.json</span>
+                <span>AppDbContext, DbSeeder i schema.sql za MySQL bazu</span>
             </div>
         </div>
     </section>
@@ -430,8 +430,8 @@ dotnet run</pre>
                 </tr>
             </tbody>
         </table>
-        <p><em>Napomena: Ako <code>korisnik3</code> ne radi, obriši <code>DomZdravlja/Data/users.json</code>
-            i ponovo pokreni aplikaciju da se kreiraju svi korisnici iz početnih podataka.</em></p>
+        <p><em>Napomena: Početni korisnici se automatski upisuju u MySQL bazu pri prvom pokretanju aplikacije
+            ako je tabela <code>users</code> prazna.</em></p>
     </section>
 
     <section id="funkcionalnosti">
@@ -476,7 +476,7 @@ dotnet run</pre>
             <li>automatski povećati zalihu odabranog lijeka</li>
             <li>pregledati historiju svih prijema (datum, ko je uneo, količina)</li>
         </ul>
-        <p>Podaci se čuvaju u <code>stock_intakes.json</code>.</p>
+        <p>Podaci se čuvaju u MySQL tabeli <code>stock_intakes</code>.</p>
     </section>
 
     <section id="stranice">
@@ -669,20 +669,37 @@ dotnet run</pre>
     </section>
 
     <section id="struktura">
-        <h2>9. Struktura podataka (JSON)</h2>
-        <p>Podaci se automatski kreiraju u folderu <code>DomZdravlja/Data/</code> pri prvom pokretanju:</p>
+        <h2>9. Struktura podataka (MySQL)</h2>
+        <p>
+            Podaci se čuvaju u MySQL bazi <code>dom_zdravlja</code>. Aplikacija pri pokretanju primjenjuje
+            EF Core migracije i zatim preko <code>DbSeeder</code> dodaje početne podatke ako su tabele prazne.
+        </p>
         <table>
             <thead>
-                <tr><th>Fajl</th><th>Sadržaj</th></tr>
+                <tr><th>Tabela / fajl</th><th>Sadržaj</th></tr>
             </thead>
             <tbody>
-                <tr><td><code>users.json</code></td><td>Korisnici, lozinke, uloge, ambulanta, isActive (aktivan/deaktiviran)</td></tr>
-                <tr><td><code>medicines.json</code></td><td>Lijekovi, količine, minimalne zalihe, expiryDate (rok trajanja)</td></tr>
-                <tr><td><code>ambulances.json</code></td><td>Lista ambulanti u domu zdravlja</td></tr>
-                <tr><td><code>requests.json</code></td><td>Svi zahtjevi za lijekove i njihovi statusi</td></tr>
-                <tr><td><code>stock_intakes.json</code></td><td>Historija prijema zaliha (lijek, količina, datum, ko je uneo, napomena)</td></tr>
+                <tr><td><code>users</code></td><td>Korisnici, lozinke, uloge, ambulanta, isActive (aktivan/deaktiviran)</td></tr>
+                <tr><td><code>medicines</code></td><td>Lijekovi, količine, minimalne zalihe, expiryDate (rok trajanja)</td></tr>
+                <tr><td><code>ambulances</code></td><td>Lista ambulanti u domu zdravlja</td></tr>
+                <tr><td><code>requests</code></td><td>Svi zahtjevi za lijekove i njihovi statusi</td></tr>
+                <tr><td><code>stock_intakes</code></td><td>Historija prijema zaliha (lijek, količina, datum, ko je uneo, napomena)</td></tr>
+                <tr><td><code>__EFMigrationsHistory</code></td><td>Interna EF Core tabela koja pamti primijenjene migracije</td></tr>
+                <tr><td><code>Data/schema.sql</code></td><td>SQL skripta za ručno kreiranje baze i tabela ako je želiš pokrenuti iz MySQL klijenta</td></tr>
             </tbody>
         </table>
+
+        <h3>Konekcija na bazu</h3>
+        <p>
+            Connection string je u <code>DomZdravlja/appsettings.json</code> i
+            <code>DomZdravlja/appsettings.Development.json</code>:
+        </p>
+        <pre><code>Server=localhost;Port=3306;Database=dom_zdravlja;User=root;Password=;</code></pre>
+        <p>
+            Ako MySQL root korisnik ima lozinku, potrebno je upisati je u dio <code>Password=...</code>.
+            Istu bazu možeš otvoriti u DBeaver-u koristeći host <code>localhost</code>, port <code>3306</code>,
+            database <code>dom_zdravlja</code> i korisnika <code>root</code>.
+        </p>
 
         <h3>Početni lijekovi (15 komada, sa rokom trajanja)</h3>
         <ul>
@@ -696,7 +713,7 @@ dotnet run</pre>
 </main>
 
 <footer>
-    Dom Zdravlja — Evidencija lijekova &nbsp;|&nbsp; .NET 8 Blazor Server &nbsp;|&nbsp; JSON file storage &nbsp;|&nbsp;
+    Dom Zdravlja — Evidencija lijekova &nbsp;|&nbsp; .NET 8 Blazor Server &nbsp;|&nbsp; MySQL + EF Core &nbsp;|&nbsp;
     <a href="STRUKTURA_KODA.html" style="color: #0d9488;">Struktura koda</a>
 </footer>
 

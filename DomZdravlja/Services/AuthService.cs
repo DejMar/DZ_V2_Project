@@ -1,18 +1,20 @@
+using DomZdravlja.Data;
 using DomZdravlja.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DomZdravlja.Services;
 
 public class AuthService
 {
     private const string SessionKey = "UserId";
-    private readonly JsonFileRepository<User> _users;
+    private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public User? CurrentUser { get; private set; }
 
-    public AuthService(JsonFileRepository<User> users, IHttpContextAccessor httpContextAccessor)
+    public AuthService(IDbContextFactory<AppDbContext> contextFactory, IHttpContextAccessor httpContextAccessor)
     {
-        _users = users;
+        _contextFactory = contextFactory;
         _httpContextAccessor = httpContextAccessor;
     }
 
@@ -29,7 +31,7 @@ public class AuthService
         if (userId is not int id)
             return;
 
-        var users = await _users.GetAllAsync();
-        CurrentUser = users.FirstOrDefault(u => u.Id == id);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        CurrentUser = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
     }
 }

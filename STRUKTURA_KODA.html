@@ -226,16 +226,16 @@
     <section id="pregled">
         <h2>1. Pregled arhitekture</h2>
         <p>
-            Projekt koristi <strong>troslojnu arhitekturu</strong> prilagođenu jednostavnim aplikacijama:
-            prezentacija (UI), poslovna logika (Services) i podaci (JSON fajlovi).
-            Nema baze podataka — umjesto nje koristi se generički <code>JsonFileRepository</code>.
+            Projekt koristi <strong>troslojnu arhitekturu</strong>:
+            prezentacija (UI), poslovna logika (Services) i perzistencija podataka u MySQL bazi.
+            Pristup bazi ide preko Entity Framework Core-a i <code>AppDbContext</code>.
         </p>
         <div class="layer-diagram">
             <div class="layer layer-ui">Components/ — Blazor stranice (UI)</div>
             <div class="layer-arrow">↓ poziva</div>
             <div class="layer layer-svc">Services/ — poslovna logika</div>
             <div class="layer-arrow">↓ čita/piše</div>
-            <div class="layer layer-data">Data/*.json — perzistentni podaci</div>
+            <div class="layer layer-data">MySQL baza — perzistentni podaci</div>
         </div>
         <p>
             <strong>Models/</strong> su zajedničke C# klase (DTO/entiteti) koje koriste i servisi i UI.
@@ -284,12 +284,11 @@
     │       └── <span class="folder">User/</span>
     │           ├── <span class="file">NewRequest.razor</span>
     │           └── <span class="file">MyRequests.razor</span>
-    ├── <span class="folder">Data/</span>                   <span class="comment">← JSON podaci (runtime)</span>
-    │   ├── <span class="file">users.json</span>
-    │   ├── <span class="file">medicines.json</span>
-    │   ├── <span class="file">ambulances.json</span>
-    │   ├── <span class="file">requests.json</span>
-    │   └── <span class="file">stock_intakes.json</span>
+    ├── <span class="folder">Data/</span>                   <span class="comment">← EF Core i MySQL konfiguracija</span>
+    │   ├── <span class="file">AppDbContext.cs</span>
+    │   ├── <span class="file">DbSeeder.cs</span>
+    │   └── <span class="file">schema.sql</span>
+    ├── <span class="folder">Migrations/</span>             <span class="comment">← EF Core migracije za kreiranje tabela</span>
     ├── <span class="folder">wwwroot/</span>
     │   └── <span class="file">app.css</span>             <span class="comment">← Globalni CSS stilovi</span>
     └── <span class="folder">Properties/</span>
@@ -322,8 +321,8 @@
                 </tr>
                 <tr>
                     <td><span class="tag tag-data">Podaci</span></td>
-                    <td><code>Data/</code></td>
-                    <td>Trajno čuvanje podataka u JSON formatu</td>
+                    <td><code>Data/</code> + <code>Migrations/</code></td>
+                    <td>Konfiguracija Entity Framework Core-a, početni podaci i MySQL šema</td>
                 </tr>
                 <tr>
                     <td><span class="tag tag-config">Config</span></td>
@@ -336,7 +335,7 @@
 
     <section id="models">
         <h2>4. Models/ — entiteti</h2>
-        <p>C# klase koje opisuju strukturu podataka. Koriste se u servisima i pri serijalizaciji u JSON.</p>
+        <p>C# klase koje opisuju strukturu podataka. Koriste se kao EF Core entiteti i DTO modeli za UI.</p>
 
         <table>
             <thead>
@@ -376,7 +375,7 @@
                 <tr>
                     <td class="file-path">ReportSummary.cs</td>
                     <td><code>ReportSummary</code>, <code>MedicineStockReport</code>, <code>AmbulanceRequestReport</code></td>
-                    <td>Modeli za izvještaje: uključuje brojače isteklih lijekova i uskoro ističućih (ne čuvaju se u JSON)</td>
+                    <td>Modeli za izvještaje: uključuje brojače isteklih lijekova i uskoro ističućih (ne čuvaju se u bazi)</td>
                 </tr>
                 <tr>
                     <td class="file-path">StockIntake.cs</td>
@@ -386,7 +385,7 @@
                 <tr>
                     <td class="file-path">DashboardSummary.cs</td>
                     <td><code>DashboardSummary</code>, <code>DashboardAlert</code>, itd.</td>
-                    <td>Modeli za dashboard: obavijesti, statistika, kritični lijekovi, zahtjevi, prijemi (ne čuvaju se u JSON)</td>
+                    <td>Modeli za dashboard: obavijesti, statistika, kritični lijekovi, zahtjevi, prijemi (ne čuvaju se u bazi)</td>
                 </tr>
             </tbody>
         </table>
@@ -394,24 +393,23 @@
 
     <section id="services">
         <h2>5. Services/ — poslovna logika</h2>
-        <p>Servisi enkapsuliraju logiku i komuniciraju sa JSON fajlovima. Registruju se u <code>Program.cs</code>.</p>
+        <p>Servisi enkapsuliraju logiku i komuniciraju sa MySQL bazom preko <code>IDbContextFactory&lt;AppDbContext&gt;</code>. Registruju se u <code>Program.cs</code>.</p>
 
         <div class="file-card">
-            <div class="title">JsonFileRepository.cs</div>
+            <div class="title">AppDbContext.cs</div>
             <div class="desc">
-                Generička klasa <code>JsonFileRepository&lt;T&gt;</code> — čita i piše listu objekata u JSON fajl.
-                Metode: <code>GetAllAsync()</code>, <code>SaveAllAsync()</code>.
-                Automatski kreira <code>Data/</code> folder ako ne postoji.
+                EF Core kontekst koji mapira entitete na MySQL tabele:
+                <code>users</code>, <code>medicines</code>, <code>ambulances</code>, <code>requests</code> i <code>stock_intakes</code>.
+                Definiše ključeve, relacije, ograničenja i ignorisane izračunate propertije.
             </div>
-            <div class="uses">Koriste: svi ostali servisi</div>
+            <div class="uses">Koriste: servisi, endpointi, migracije i DbSeeder</div>
         </div>
 
         <div class="file-card">
-            <div class="title">DataInitializer.cs</div>
+            <div class="title">DbSeeder.cs</div>
             <div class="desc">
-                Pri prvom pokretanju aplikacije popunjava prazne JSON fajlove demo podacima
-                (5 korisnika, 3 ambulante, 15 lijekova sa rokom trajanja, prazan stock_intakes.json).
-                <code>MigrateLegacyUsersAsync</code> postavlja isActive=true za stare JSON fajlove.
+                Pri prvom pokretanju aplikacije ubacuje demo podatke u bazu ako su tabele prazne:
+                5 korisnika, 3 ambulante i 15 lijekova sa rokom trajanja.
             </div>
             <div class="uses">Poziva: Program.cs pri startu</div>
         </div>
@@ -429,7 +427,7 @@
             <div class="title">MedicineService.cs</div>
             <div class="desc">
                 CRUD za lijekove: dodavanje, uređivanje, brisanje, smanjenje zalihe pri izdavanju.
-                Radi sa <code>medicines.json</code>.
+                Radi sa tabelom <code>medicines</code>.
             </div>
             <div class="uses">Koriste: Medicines.razor, RequestService, ReportService, NewRequest.razor</div>
         </div>
@@ -437,7 +435,7 @@
         <div class="file-card">
             <div class="title">AmbulanceService.cs</div>
             <div class="desc">
-                Čitanje ambulanti i dohvat naziva po ID-u. Radi sa <code>ambulances.json</code>.
+                Čitanje ambulanti i dohvat naziva po ID-u. Radi sa tabelom <code>ambulances</code>.
             </div>
             <div class="uses">Koriste: NewRequest.razor, Requests.razor, ReportService</div>
         </div>
@@ -447,8 +445,8 @@
             <div class="desc">
                 Upravljanje zahtjevima: kreiranje, odobravanje, odbijanje, izdavanje.
                 <code>DeliverAsync</code> blokira izdavanje isteklih lijekova i vraća poruku greške.
-                Pri izdavanju poziva <code>MedicineService.ReduceStockAsync</code>.
-                Radi sa <code>requests.json</code>.
+                Pri izdavanju smanjuje zalihu lijeka i ažurira status zahtjeva u istoj bazi.
+                Radi sa tabelama <code>requests</code> i <code>medicines</code>.
             </div>
             <div class="uses">Koriste: NewRequest.razor, MyRequests.razor, Requests.razor, ReportService</div>
         </div>
@@ -457,7 +455,7 @@
             <div class="title">UserService.cs</div>
             <div class="desc">
                 CRUD za korisnike: dodavanje, uređivanje, provjera jedinstvenog username-a,
-                aktivacija/deaktivacija naloga. Radi sa <code>users.json</code>.
+                aktivacija/deaktivacija naloga. Radi sa tabelom <code>users</code>.
             </div>
             <div class="uses">Koriste: Users.razor, AuthEndpoints (login provjera)</div>
         </div>
@@ -484,7 +482,7 @@
             <div class="title">StockIntakeService.cs</div>
             <div class="desc">
                 Evidentiranje prijema zaliha: <code>RecordIntakeAsync()</code> snima zapis i povećava zalihu lijeka.
-                Opcionalno ažurira rok trajanja. Radi sa <code>stock_intakes.json</code>.
+                Opcionalno ažurira rok trajanja. Radi sa tabelama <code>stock_intakes</code> i <code>medicines</code>.
             </div>
             <div class="uses">Koriste: PrijemZaliha.razor, DashboardService</div>
         </div>
@@ -636,7 +634,8 @@
                     <td class="file-path">Program.cs</td>
                     <td>
                         <strong>Ulazna tačka aplikacije.</strong> Registruje servise (DI container),
-                        konfiguriše session, pokreće DataInitializer, mapira auth/export endpointe i Blazor rute.
+                        konfiguriše session, registruje MySQL <code>DbContextFactory</code>, pokreće migracije i seeding,
+                        mapira auth/export endpointe i Blazor rute.
                     </td>
                 </tr>
                 <tr>
@@ -656,15 +655,15 @@
                 </tr>
                 <tr>
                     <td class="file-path">DomZdravlja.csproj</td>
-                    <td>Definicija .NET 8 web projekta — target framework, SDK tip.</td>
+                    <td>Definicija .NET 8 web projekta, uključujući EF Core Design i Pomelo MySQL provider pakete.</td>
                 </tr>
                 <tr>
                     <td class="file-path">appsettings.json</td>
-                    <td>Opšta konfiguracija (logovanje nivoi). Nema connection stringa jer nema baze.</td>
+                    <td>Opšta konfiguracija i MySQL connection string (<code>DefaultConnection</code>).</td>
                 </tr>
                 <tr>
                     <td class="file-path">appsettings.Development.json</td>
-                    <td>Dodatna konfiguracija samo za development okruženje.</td>
+                    <td>Dodatna konfiguracija samo za development okruženje, uključujući lokalni connection string.</td>
                 </tr>
                 <tr>
                     <td class="file-path">Properties/launchSettings.json</td>
@@ -675,10 +674,27 @@
                     <td>Globalni CSS: boje, layout, tabele, forme, dugmad, login stranica, responsive stilovi.</td>
                 </tr>
                 <tr>
-                    <td class="file-path">Data/*.json</td>
+                    <td class="file-path">Data/AppDbContext.cs</td>
                     <td>
-                        Runtime podaci. Kreiraju se automatski. Svaki fajl = jedna kolekcija entiteta.
-                        Nisu u git-u (vidi <code>.gitignore</code>).
+                        EF Core mapiranje modela na MySQL tabele, indekse i relacije.
+                    </td>
+                </tr>
+                <tr>
+                    <td class="file-path">Data/DbSeeder.cs</td>
+                    <td>
+                        Početni demo podaci za korisnike, ambulante i lijekove.
+                    </td>
+                </tr>
+                <tr>
+                    <td class="file-path">Data/schema.sql</td>
+                    <td>
+                        Ručna SQL skripta za kreiranje baze <code>dom_zdravlja</code> i tabela ako se ne koriste migracije.
+                    </td>
+                </tr>
+                <tr>
+                    <td class="file-path">Migrations/</td>
+                    <td>
+                        EF Core migracije koje aplikacija automatski primjenjuje pri pokretanju.
                     </td>
                 </tr>
                 <tr>
@@ -687,7 +703,7 @@
                 </tr>
                 <tr>
                     <td class="file-path">.gitignore</td>
-                    <td>Isključuje <code>bin/</code>, <code>obj/</code> i <code>Data/</code> iz verzionisanja.</td>
+                    <td>Isključuje <code>bin/</code>, <code>obj/</code> i druge generisane fajlove iz verzionisanja.</td>
                 </tr>
             </tbody>
         </table>
@@ -723,7 +739,7 @@
                 <tr>
                     <td><strong>Prijem zaliha</strong></td>
                     <td><code>PrijemZaliha.razor</code>, <code>StockIntakeService.cs</code>, <code>StockIntake.cs</code></td>
-                    <td>Evidentiranje dolaska robe, povećanje zalihe, historija u <code>stock_intakes.json</code></td>
+                    <td>Evidentiranje dolaska robe, povećanje zalihe, historija u tabeli <code>stock_intakes</code></td>
                 </tr>
             </tbody>
         </table>
@@ -735,7 +751,7 @@
         <h3>Prijava korisnika</h3>
         <div class="tree">
 <span class="comment">Login.razor</span>  →  POST forma  →  <span class="comment">AuthEndpoints.cs</span> (/auth/login)
-    →  čita <span class="comment">users.json</span> preko JsonFileRepository&lt;User&gt;
+    →  čita tabelu <span class="comment">users</span> preko AppDbContext-a
     →  postavlja session  →  redirect na <code>/pregled</code>
     →  <span class="comment">AuthService.EnsureLoadedAsync()</span> učitava korisnika iz session-a na svakoj stranici
         </div>
@@ -743,8 +759,8 @@
         <h3>Admin/Moderator evidentira prijem zaliha</h3>
         <div class="tree">
 <span class="comment">PrijemZaliha.razor</span>  →  <span class="comment">StockIntakeService.RecordIntakeAsync()</span>
-    →  snima u <span class="comment">stock_intakes.json</span>
-    →  <span class="comment">MedicineService.UpdateAsync()</span> povećava zalihu u <span class="comment">medicines.json</span>
+    →  snima u tabelu <span class="comment">stock_intakes</span>
+    →  povećava zalihu u tabeli <span class="comment">medicines</span>
         </div>
 
         <h3>Korisnik otvara dashboard</h3>
@@ -757,21 +773,21 @@
         <h3>Korisnik šalje zahtjev</h3>
         <div class="tree">
 <span class="comment">NewRequest.razor</span>  →  <span class="comment">RequestService.CreateAsync()</span>
-    →  JsonFileRepository&lt;MedicationRequest&gt;  →  <span class="comment">requests.json</span>
+    →  AppDbContext  →  tabela <span class="comment">requests</span>
         </div>
 
         <h3>Moderator izdaje lijek</h3>
         <div class="tree">
 <span class="comment">Requests.razor</span>  →  <span class="comment">RequestService.DeliverAsync()</span>
     →  provjera <span class="comment">Medicine.IsExpired</span>  →  ako istekao, vraća grešku
-    →  <span class="comment">MedicineService.ReduceStockAsync()</span>  →  <span class="comment">medicines.json</span>
-    →  ažurira status u  <span class="comment">requests.json</span>
+    →  smanjuje zalihu u tabeli <span class="comment">medicines</span>
+    →  ažurira status u tabeli <span class="comment">requests</span>
         </div>
 
         <h3>Admin upravlja korisnicima</h3>
         <div class="tree">
 <span class="comment">Users.razor</span>  →  <span class="comment">UserService.AddAsync() / UpdateAsync() / SetActiveAsync()</span>
-    →  JsonFileRepository&lt;User&gt;  →  <span class="comment">users.json</span>
+    →  AppDbContext  →  tabela <span class="comment">users</span>
         </div>
 
         <h3>Admin izvozi izvještaj</h3>
@@ -784,7 +800,7 @@
         <h3>Admin pregleda izvještaj</h3>
         <div class="tree">
 <span class="comment">Reports.razor</span>  →  <span class="comment">ReportService.GetSummaryAsync()</span>
-    →  čita medicines.json + requests.json + ambulances.json
+    →  čita tabele medicines + requests + ambulances
     →  vraća ReportSummary  →  prikazuje na stranici
         </div>
 
@@ -796,9 +812,9 @@
             </thead>
             <tbody>
                 <tr>
-                    <td><code>Singleton</code></td>
-                    <td>JsonFileRepository, DataInitializer</td>
-                    <td>Jedna instanca za cijelu aplikaciju (dijele pristup fajlovima)</td>
+                    <td><code>DbContextFactory</code></td>
+                    <td><code>IDbContextFactory&lt;AppDbContext&gt;</code></td>
+                    <td>Kreira kratkotrajni DbContext po operaciji i izbjegava konkurentno korištenje istog konteksta u Blazor Serveru</td>
                 </tr>
                 <tr>
                     <td><code>Scoped</code></td>

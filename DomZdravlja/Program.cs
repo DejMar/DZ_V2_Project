@@ -1,7 +1,8 @@
 using DomZdravlja;
 using DomZdravlja.Components;
-using DomZdravlja.Models;
+using DomZdravlja.Data;
 using DomZdravlja.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,18 +18,13 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-builder.Services.AddSingleton<JsonFileRepository<User>>(sp =>
-    new JsonFileRepository<User>(sp.GetRequiredService<IWebHostEnvironment>(), "users.json"));
-builder.Services.AddSingleton<JsonFileRepository<Medicine>>(sp =>
-    new JsonFileRepository<Medicine>(sp.GetRequiredService<IWebHostEnvironment>(), "medicines.json"));
-builder.Services.AddSingleton<JsonFileRepository<Ambulance>>(sp =>
-    new JsonFileRepository<Ambulance>(sp.GetRequiredService<IWebHostEnvironment>(), "ambulances.json"));
-builder.Services.AddSingleton<JsonFileRepository<MedicationRequest>>(sp =>
-    new JsonFileRepository<MedicationRequest>(sp.GetRequiredService<IWebHostEnvironment>(), "requests.json"));
-builder.Services.AddSingleton<JsonFileRepository<StockIntake>>(sp =>
-    new JsonFileRepository<StockIntake>(sp.GetRequiredService<IWebHostEnvironment>(), "stock_intakes.json"));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddSingleton<DataInitializer>();
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
+    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 0))));
+
+builder.Services.AddScoped<DbSeeder>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<MedicineService>();
 builder.Services.AddScoped<AmbulanceService>();
@@ -43,8 +39,12 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var initializer = scope.ServiceProvider.GetRequiredService<DataInitializer>();
-    await initializer.InitializeAsync();
+    var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+    await using var db = await contextFactory.CreateDbContextAsync();
+    await db.Database.MigrateAsync();
+
+    var seeder = scope.ServiceProvider.GetRequiredService<DbSeeder>();
+    await seeder.SeedAsync();
 }
 
 if (!app.Environment.IsDevelopment())

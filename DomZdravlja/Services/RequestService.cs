@@ -1,76 +1,83 @@
+using DomZdravlja.Data;
 using DomZdravlja.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DomZdravlja.Services;
 
 public class RequestService
 {
-    private readonly JsonFileRepository<MedicationRequest> _repository;
-    private readonly MedicineService _medicineService;
+    private readonly IDbContextFactory<AppDbContext> _contextFactory;
 
-    public RequestService(
-        JsonFileRepository<MedicationRequest> repository,
-        MedicineService medicineService)
+    public RequestService(IDbContextFactory<AppDbContext> contextFactory) => _contextFactory = contextFactory;
+
+    public async Task<List<MedicationRequest>> GetAllAsync()
     {
-        _repository = repository;
-        _medicineService = medicineService;
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Requests.AsNoTracking().OrderByDescending(r => r.CreatedAt).ToListAsync();
     }
 
-    public Task<List<MedicationRequest>> GetAllAsync() => _repository.GetAllAsync();
+    public async Task<List<MedicationRequest>> GetByUserIdAsync(int userId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Requests.AsNoTracking()
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+    }
 
-    public async Task<List<MedicationRequest>> GetByUserIdAsync(int userId) =>
-        (await _repository.GetAllAsync()).Where(r => r.UserId == userId).OrderByDescending(r => r.CreatedAt).ToList();
-
-    public async Task<List<MedicationRequest>> GetPendingAsync() =>
-        (await _repository.GetAllAsync()).Where(r => r.Status == RequestStatus.NaCekanju).OrderBy(r => r.CreatedAt).ToList();
+    public async Task<List<MedicationRequest>> GetPendingAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Requests.AsNoTracking()
+            .Where(r => r.Status == RequestStatus.NaCekanju)
+            .OrderBy(r => r.CreatedAt)
+            .ToListAsync();
+    }
 
     public async Task CreateAsync(MedicationRequest request)
     {
-        var requests = await _repository.GetAllAsync();
-        request.Id = requests.Count == 0 ? 1 : requests.Max(r => r.Id) + 1;
+        await using var context = await _contextFactory.CreateDbContextAsync();
         request.Status = RequestStatus.NaCekanju;
         request.CreatedAt = DateTime.Now;
-        requests.Add(request);
-        await _repository.SaveAllAsync(requests);
+        context.Requests.Add(request);
+        await context.SaveChangesAsync();
     }
 
-    public async Task<bool> ApproveAsync(int requestId, int moderatorId, string note = "")
-    {
-        return await UpdateStatusAsync(requestId, RequestStatus.Odobren, moderatorId, note);
-    }
+    public async Task<bool> ApproveAsync(int requestId, int moderatorId, string note = "") =>
+        await UpdateStatusAsync(requestId, RequestStatus.Odobren, moderatorId, note);
 
-    public async Task<bool> RejectAsync(int requestId, int moderatorId, string note)
-    {
-        return await UpdateStatusAsync(requestId, RequestStatus.Odbijen, moderatorId, note);
-    }
+    public async Task<bool> RejectAsync(int requestId, int moderatorId, string note) =>
+        await UpdateStatusAsync(requestId, RequestStatus.Odbijen, moderatorId, note);
 
     public async Task<string?> DeliverAsync(int requestId, int moderatorId)
     {
-        var requests = await _repository.GetAllAsync();
-        var request = requests.FirstOrDefault(r => r.Id == requestId);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var request = await context.Requests.FindAsync(requestId);
         if (request is null || request.Status != RequestStatus.Odobren)
             return "Zahtjev nije pronađen ili nije odobren.";
 
-        var medicine = await _medicineService.GetByIdAsync(request.MedicineId);
+        var medicine = await context.Medicines.FindAsync(request.MedicineId);
         if (medicine is null)
             return "Lijek nije pronađen.";
 
-        if (medicine.IsExpired)
+        if (medicine.ExpiryDate.HasValue && medicine.ExpiryDate.Value.Date < DateTime.Today)
             return "Lijek je istekao i ne može se izdati.";
 
-        if (!await _medicineService.ReduceStockAsync(request.MedicineId, request.Quantity))
+        if (medicine.Quantity < request.Quantity)
             return "Nema dovoljno lijeka na zalihi.";
 
+        medicine.Quantity -= request.Quantity;
         request.Status = RequestStatus.Izdato;
         request.ModeratorId = moderatorId;
         request.ProcessedAt = DateTime.Now;
-        await _repository.SaveAllAsync(requests);
+        await context.SaveChangesAsync();
         return null;
     }
 
     private async Task<bool> UpdateStatusAsync(int requestId, RequestStatus status, int moderatorId, string note)
     {
-        var requests = await _repository.GetAllAsync();
-        var request = requests.FirstOrDefault(r => r.Id == requestId);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var request = await context.Requests.FindAsync(requestId);
         if (request is null || request.Status != RequestStatus.NaCekanju)
             return false;
 
@@ -78,7 +85,7 @@ public class RequestService
         request.ModeratorId = moderatorId;
         request.ProcessedAt = DateTime.Now;
         request.Note = note;
-        await _repository.SaveAllAsync(requests);
+        await context.SaveChangesAsync();
         return true;
     }
 }

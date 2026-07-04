@@ -1,5 +1,5 @@
-using DomZdravlja.Models;
-using DomZdravlja.Services;
+using DomZdravlja.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace DomZdravlja;
 
@@ -9,15 +9,15 @@ public static class AuthEndpoints
 
     public static void MapAuthEndpoints(this WebApplication app)
     {
-        app.MapPost("/auth/login", async (HttpContext context, JsonFileRepository<User> users) =>
+        app.MapPost("/auth/login", async (HttpContext context, IDbContextFactory<AppDbContext> contextFactory) =>
         {
             var form = await context.Request.ReadFormAsync();
             var username = form["username"].ToString();
             var password = form["password"].ToString();
 
-            var allUsers = await users.GetAllAsync();
-            var user = allUsers.FirstOrDefault(u =>
-                u.Username.Equals(username, StringComparison.OrdinalIgnoreCase) &&
+            await using var db = await contextFactory.CreateDbContextAsync();
+            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u =>
+                u.Username.ToLower() == username.ToLower() &&
                 u.Password == password);
 
             if (user is null || !user.IsActive)
@@ -27,10 +27,7 @@ public static class AuthEndpoints
             }
 
             context.Session.SetInt32(SessionKey, user.Id);
-
-            var destination = "/pregled";
-
-            context.Response.Redirect(destination);
+            context.Response.Redirect("/pregled");
         }).DisableAntiforgery();
 
         app.MapGet("/auth/logout", (HttpContext context) =>

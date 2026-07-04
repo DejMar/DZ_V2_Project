@@ -1,59 +1,68 @@
+using DomZdravlja.Data;
 using DomZdravlja.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DomZdravlja.Services;
 
 public class UserService
 {
-    private readonly JsonFileRepository<User> _repository;
+    private readonly IDbContextFactory<AppDbContext> _contextFactory;
 
-    public UserService(JsonFileRepository<User> repository) => _repository = repository;
+    public UserService(IDbContextFactory<AppDbContext> contextFactory) => _contextFactory = contextFactory;
 
-    public Task<List<User>> GetAllAsync() => _repository.GetAllAsync();
+    public async Task<List<User>> GetAllAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users.AsNoTracking().OrderBy(u => u.FullName).ToListAsync();
+    }
 
-    public async Task<User?> GetByIdAsync(int id) =>
-        (await _repository.GetAllAsync()).FirstOrDefault(u => u.Id == id);
+    public async Task<User?> GetByIdAsync(int id)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
+    }
 
     public async Task<bool> UsernameExistsAsync(string username, int? excludeId = null)
     {
-        var users = await _repository.GetAllAsync();
-        return users.Any(u =>
-            u.Username.Equals(username, StringComparison.OrdinalIgnoreCase) &&
-            u.Id != excludeId);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var query = context.Users.AsNoTracking()
+            .Where(u => u.Username.ToLower() == username.ToLower());
+
+        if (excludeId.HasValue)
+            query = query.Where(u => u.Id != excludeId.Value);
+
+        return await query.AnyAsync();
     }
 
     public async Task AddAsync(User user)
     {
-        var users = await _repository.GetAllAsync();
-        user.Id = users.Count == 0 ? 1 : users.Max(u => u.Id) + 1;
+        await using var context = await _contextFactory.CreateDbContextAsync();
         user.IsActive = true;
         if (user.Role != UserRole.Korisnik)
             user.AmbulanceId = null;
-        users.Add(user);
-        await _repository.SaveAllAsync(users);
+
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(User user)
     {
-        var users = await _repository.GetAllAsync();
-        var index = users.FindIndex(u => u.Id == user.Id);
-        if (index < 0)
-            return;
-
+        await using var context = await _contextFactory.CreateDbContextAsync();
         if (user.Role != UserRole.Korisnik)
             user.AmbulanceId = null;
 
-        users[index] = user;
-        await _repository.SaveAllAsync(users);
+        context.Users.Update(user);
+        await context.SaveChangesAsync();
     }
 
     public async Task SetActiveAsync(int id, bool isActive)
     {
-        var users = await _repository.GetAllAsync();
-        var user = users.FirstOrDefault(u => u.Id == id);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var user = await context.Users.FindAsync(id);
         if (user is null)
             return;
 
         user.IsActive = isActive;
-        await _repository.SaveAllAsync(users);
+        await context.SaveChangesAsync();
     }
 }
