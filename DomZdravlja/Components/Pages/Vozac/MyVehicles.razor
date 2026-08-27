@@ -1,0 +1,62 @@
+@page "/vozac/vozila"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject VehicleService VehicleService
+@inject AuthService Auth
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Vozac })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Moja vozila</h1>
+                <p>Vozila koja su vam dodijeljena</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Oznaka</th>
+                        <th>Vozilo</th>
+                        <th>Gorivo</th>
+                        <th>Rezervoar</th>
+                        <th>Trenutna km</th>
+                        <th>Napomena</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var vehicle in _vehicles)
+                    {
+                        <tr>
+                            <td><strong>@vehicle.PlateNumber</strong></td>
+                            <td>@vehicle.Brand @vehicle.Model (@vehicle.Year)</td>
+                            <td>@vehicle.FuelType</td>
+                            <td>@vehicle.TankCapacityLiters L</td>
+                            <td>@vehicle.CurrentMileage km</td>
+                            <td>@(string.IsNullOrWhiteSpace(vehicle.Note) ? "—" : vehicle.Note)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_vehicles.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>Nemate dodijeljeno nijedno vozilo. Kontaktirajte administratora.</p>
+                </div>
+            }
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private List<Vehicle> _vehicles = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUser is null)
+            return;
+
+        _vehicles = await VehicleService.GetByDriverIdAsync(Auth.CurrentUser.Id);
+    }
+}

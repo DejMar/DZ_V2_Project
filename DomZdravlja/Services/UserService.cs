@@ -22,6 +22,15 @@ public class UserService
         return await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
     }
 
+    public async Task<List<User>> GetDriversAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Users.AsNoTracking()
+            .Where(u => u.Role == UserRole.Vozac && u.IsActive)
+            .OrderBy(u => u.FullName)
+            .ToListAsync();
+    }
+
     public async Task<bool> UsernameExistsAsync(string username, int? excludeId = null)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();

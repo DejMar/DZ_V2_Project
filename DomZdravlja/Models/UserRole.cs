@@ -4,5 +4,6 @@ public enum UserRole
 {
     Administrator,
     Moderator,
-    Korisnik
+    Korisnik,
+    Vozac
 }

@@ -24,6 +24,8 @@
                     <NavLink href="/admin/lijekovi">Lijekovi</NavLink>
                     <NavLink href="/prijem-zaliha">Prijem zaliha</NavLink>
                     <NavLink href="/admin/korisnici">Korisnici</NavLink>
+                    <NavLink href="/admin/vozila">Vozila</NavLink>
+                    <NavLink href="/admin/flota-statistika">Statistika flote</NavLink>
                     <NavLink href="/admin/izvjestaji">Izvještaji</NavLink>
                 }
 
@@ -37,6 +39,13 @@
                 {
                     <NavLink href="/korisnik/novi-zahtjev">Novi zahtjev</NavLink>
                     <NavLink href="/korisnik/moji-zahtjevi">Moji zahtjevi</NavLink>
+                }
+
+                @if (Auth.IsInRole(UserRole.Vozac))
+                {
+                    <NavLink href="/vozac/vozila">Moja vozila</NavLink>
+                    <NavLink href="/vozac/voznje">Vožnje</NavLink>
+                    <NavLink href="/vozac/gorivo">Točenje goriva</NavLink>
                 }
             </nav>
 

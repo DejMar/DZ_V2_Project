@@ -11,19 +11,28 @@ public class DashboardService
     private readonly AmbulanceService _ambulanceService;
     private readonly StockIntakeService _stockIntakeService;
     private readonly UserService _userService;
+    private readonly VehicleService _vehicleService;
+    private readonly VehicleTripService _vehicleTripService;
+    private readonly FuelFillService _fuelFillService;
 
     public DashboardService(
         MedicineService medicineService,
         RequestService requestService,
         AmbulanceService ambulanceService,
         StockIntakeService stockIntakeService,
-        UserService userService)
+        UserService userService,
+        VehicleService vehicleService,
+        VehicleTripService vehicleTripService,
+        FuelFillService fuelFillService)
     {
         _medicineService = medicineService;
         _requestService = requestService;
         _ambulanceService = ambulanceService;
         _stockIntakeService = stockIntakeService;
         _userService = userService;
+        _vehicleService = vehicleService;
+        _vehicleTripService = vehicleTripService;
+        _fuelFillService = fuelFillService;
     }
 
     public async Task<DashboardSummary> GetAdminDashboardAsync()
@@ -205,6 +214,54 @@ public class DashboardService
                 Severity = "danger",
                 Link = "/korisnik/moji-zahtjevi",
                 LinkText = "Detalji"
+            });
+
+        return summary;
+    }
+
+    public async Task<DashboardSummary> GetVozacDashboardAsync(int driverId)
+    {
+        var vehicles = await _vehicleService.GetByDriverIdAsync(driverId);
+        var trips = await _vehicleTripService.GetByDriverIdAsync(driverId);
+        var fills = await _fuelFillService.GetByDriverIdAsync(driverId);
+        var openTrips = trips.Count(t => t.IsOpen);
+        var distance = trips.Where(t => t.EndMileage.HasValue).Sum(t => t.EndMileage!.Value - t.StartMileage);
+
+        var summary = new DashboardSummary
+        {
+            Stats = new DashboardStats
+            {
+                AssignedVehicles = vehicles.Count,
+                OpenTrips = openTrips,
+                DriverDistanceKm = distance,
+                DriverFuelLiters = fills.Sum(f => f.Liters)
+            }
+        };
+
+        if (vehicles.Count == 0)
+            summary.Alerts.Add(new DashboardAlert
+            {
+                Message = "Nemate dodijeljeno nijedno vozilo.",
+                Severity = "warning",
+                Link = "/vozac/vozila",
+                LinkText = "Moja vozila"
+            });
+
+        if (openTrips > 0)
+            summary.Alerts.Add(new DashboardAlert
+            {
+                Message = "Imate otvorenu vožnju koju treba zatvoriti.",
+                Severity = "warning",
+                Link = "/vozac/voznje",
+                LinkText = "Završi vožnju"
+            });
+        else if (vehicles.Count > 0)
+            summary.Alerts.Add(new DashboardAlert
+            {
+                Message = "Možete pokrenuti novu vožnju ili evidentirati točenje goriva.",
+                Severity = "info",
+                Link = "/vozac/voznje",
+                LinkText = "Vožnje"
             });
 
         return summary;

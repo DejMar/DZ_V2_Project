@@ -30,6 +30,10 @@ public class DashboardStats
     public int UserApprovedCount { get; set; }
     public int UserDeliveredCount { get; set; }
     public int UserRejectedCount { get; set; }
+    public int AssignedVehicles { get; set; }
+    public int OpenTrips { get; set; }
+    public int DriverDistanceKm { get; set; }
+    public decimal DriverFuelLiters { get; set; }
 }
 
 public class DashboardMedicineItem

@@ -34,6 +34,10 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ReportExportService>();
 builder.Services.AddScoped<StockIntakeService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<VehicleService>();
+builder.Services.AddScoped<VehicleTripService>();
+builder.Services.AddScoped<FuelFillService>();
+builder.Services.AddScoped<FleetStatsService>();
 
 var app = builder.Build();
 

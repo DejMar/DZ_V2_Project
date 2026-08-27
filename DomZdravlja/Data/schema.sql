@@ -61,3 +61,47 @@ CREATE TABLE IF NOT EXISTS stock_intakes (
     CONSTRAINT FK_stock_intakes_medicines FOREIGN KEY (MedicineId) REFERENCES medicines(Id) ON DELETE RESTRICT,
     CONSTRAINT FK_stock_intakes_users FOREIGN KEY (ReceivedByUserId) REFERENCES users(Id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS vehicles (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    PlateNumber VARCHAR(20) NOT NULL UNIQUE,
+    Brand VARCHAR(100) NOT NULL,
+    Model VARCHAR(100) NOT NULL,
+    Year INT NOT NULL,
+    FuelType VARCHAR(50) NOT NULL,
+    TankCapacityLiters DECIMAL(8,2) NOT NULL,
+    CurrentMileage INT NOT NULL,
+    AssignedDriverId INT NULL,
+    Note VARCHAR(500) NOT NULL DEFAULT '',
+    IsActive TINYINT(1) NOT NULL DEFAULT 1,
+    CONSTRAINT FK_vehicles_drivers FOREIGN KEY (AssignedDriverId) REFERENCES users(Id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS vehicle_trips (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    VehicleId INT NOT NULL,
+    DriverId INT NOT NULL,
+    StartMileage INT NOT NULL,
+    EndMileage INT NULL,
+    StartedAt DATETIME NOT NULL,
+    EndedAt DATETIME NULL,
+    RouteDescription VARCHAR(500) NOT NULL DEFAULT '',
+    Note VARCHAR(500) NOT NULL DEFAULT '',
+    CONSTRAINT FK_vehicle_trips_vehicles FOREIGN KEY (VehicleId) REFERENCES vehicles(Id) ON DELETE RESTRICT,
+    CONSTRAINT FK_vehicle_trips_drivers FOREIGN KEY (DriverId) REFERENCES users(Id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS fuel_fills (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    VehicleId INT NOT NULL,
+    DriverId INT NOT NULL,
+    Mileage INT NOT NULL,
+    Liters DECIMAL(8,2) NOT NULL,
+    Cost DECIMAL(10,2) NULL,
+    IsFullTank TINYINT(1) NOT NULL DEFAULT 0,
+    FilledAt DATETIME NOT NULL,
+    Station VARCHAR(200) NOT NULL DEFAULT '',
+    Note VARCHAR(500) NOT NULL DEFAULT '',
+    CONSTRAINT FK_fuel_fills_vehicles FOREIGN KEY (VehicleId) REFERENCES vehicles(Id) ON DELETE RESTRICT,
+    CONSTRAINT FK_fuel_fills_drivers FOREIGN KEY (DriverId) REFERENCES users(Id) ON DELETE RESTRICT
+) ENGINE=InnoDB;

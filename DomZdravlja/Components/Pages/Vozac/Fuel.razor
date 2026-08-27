@@ -1,0 +1,200 @@
+@page "/vozac/gorivo"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject VehicleService VehicleService
+@inject FuelFillService FuelFillService
+@inject AuthService Auth
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Vozac })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Točenje goriva</h1>
+                <p>Evidentiranje točenja, uključujući pun rezervoar</p>
+            </div>
+            @if (_vehicles.Count > 0)
+            {
+                <button class="btn btn-primary" @onclick="ShowAddForm">+ Novo točenje</button>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-error" : "alert-success")">@_message</div>
+        }
+
+        @if (_showForm)
+        {
+            <div class="card form-card">
+                <h2>Novo točenje</h2>
+                <EditForm Model="_form" OnValidSubmit="SaveFill">
+                    <div class="form-group">
+                        <label>Vozilo</label>
+                        <InputSelect TValue="int" Value="_form.VehicleId" ValueChanged="OnVehicleSelected" ValueExpression="() => _form.VehicleId" class="form-control">
+                            <option value="0">— Odaberite —</option>
+                            @foreach (var vehicle in _vehicles)
+                            {
+                                <option value="@vehicle.Id">@vehicle.DisplayName — @vehicle.CurrentMileage km</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kilometraža pri točenju</label>
+                            <InputNumber @bind-Value="_form.Mileage" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Količina (litara)</label>
+                            <InputNumber @bind-Value="_form.Liters" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cijena (opcionalno)</label>
+                            <InputNumber @bind-Value="_form.Cost" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Benzinska stanica</label>
+                            <InputText @bind-Value="_form.Station" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <InputCheckbox @bind-Value="_form.IsFullTank" />
+                            Pun rezervoar (full tank)
+                        </label>
+                        <span class="form-hint">Označite ako ste natočili pun rezervoar — koristi se za tačniju potrošnju.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Napomena</label>
+                        <InputText @bind-Value="_form.Note" class="form-control" />
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Spremi</button>
+                        <button type="button" class="btn btn-outline" @onclick="() => _showForm = false">Odustani</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+        <div class="card">
+            <h2>Historija točenja</h2>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Datum</th>
+                        <th>Vozilo</th>
+                        <th>Km</th>
+                        <th>Litara</th>
+                        <th>Cijena</th>
+                        <th>Pun rezervoar</th>
+                        <th>Stanica</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var fill in _fills)
+                    {
+                        <tr>
+                            <td>@fill.FilledAt.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@GetVehicleName(fill.VehicleId)</td>
+                            <td>@fill.Mileage</td>
+                            <td>@fill.Liters.ToString("0.##")</td>
+                            <td>@(fill.Cost?.ToString("0.00") ?? "—")</td>
+                            <td>
+                                @if (fill.IsFullTank)
+                                {
+                                    <span class="badge badge-success">Da</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-info">Ne</span>
+                                }
+                            </td>
+                            <td>@(string.IsNullOrWhiteSpace(fill.Station) ? "—" : fill.Station)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_fills.Count == 0)
+            {
+                <div class="empty-state"><p>Još nema evidentiranih točenja.</p></div>
+            }
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private List<Vehicle> _vehicles = [];
+    private List<FuelFill> _fills = [];
+    private bool _showForm;
+    private FuelFill _form = new();
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        if (Auth.CurrentUser is null)
+            return;
+
+        _vehicles = await VehicleService.GetByDriverIdAsync(Auth.CurrentUser.Id);
+        _fills = await FuelFillService.GetByDriverIdAsync(Auth.CurrentUser.Id);
+    }
+
+    private void ShowAddForm()
+    {
+        var first = _vehicles.FirstOrDefault();
+        _form = new FuelFill
+        {
+            VehicleId = first?.Id ?? 0,
+            Mileage = first?.CurrentMileage ?? 0,
+            IsFullTank = true,
+            DriverId = Auth.CurrentUser!.Id
+        };
+        _showForm = true;
+        _message = null;
+    }
+
+    private Task OnVehicleSelected(int vehicleId)
+    {
+        _form.VehicleId = vehicleId;
+        var vehicle = _vehicles.FirstOrDefault(v => v.Id == vehicleId);
+        if (vehicle is not null)
+            _form.Mileage = vehicle.CurrentMileage;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveFill()
+    {
+        if (Auth.CurrentUser is null)
+            return;
+
+        if (_form.VehicleId <= 0)
+        {
+            ShowMessage("Odaberite vozilo.", true);
+            return;
+        }
+
+        _form.DriverId = Auth.CurrentUser.Id;
+        var error = await FuelFillService.RecordFillAsync(_form);
+        if (error is not null)
+        {
+            ShowMessage(error, true);
+            return;
+        }
+
+        _showForm = false;
+        await LoadData();
+        ShowMessage("Točenje je uspješno evidentirano.", false);
+    }
+
+    private string GetVehicleName(int vehicleId) =>
+        _vehicles.FirstOrDefault(v => v.Id == vehicleId)?.DisplayName ?? $"#{vehicleId}";
+
+    private void ShowMessage(string text, bool isError)
+    {
+        _message = text;
+        _isError = isError;
+    }
+}

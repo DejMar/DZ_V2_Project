@@ -12,6 +12,9 @@ public class AppDbContext : DbContext
     public DbSet<Ambulance> Ambulances => Set<Ambulance>();
     public DbSet<MedicationRequest> Requests => Set<MedicationRequest>();
     public DbSet<StockIntake> StockIntakes => Set<StockIntake>();
+    public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+    public DbSet<VehicleTrip> VehicleTrips => Set<VehicleTrip>();
+    public DbSet<FuelFill> FuelFills => Set<FuelFill>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -85,6 +88,60 @@ public class AppDbContext : DbContext
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(s => s.ReceivedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Vehicle>(entity =>
+        {
+            entity.ToTable("vehicles");
+            entity.HasKey(v => v.Id);
+            entity.Property(v => v.PlateNumber).HasMaxLength(20).IsRequired();
+            entity.HasIndex(v => v.PlateNumber).IsUnique();
+            entity.Property(v => v.Brand).HasMaxLength(100).IsRequired();
+            entity.Property(v => v.Model).HasMaxLength(100).IsRequired();
+            entity.Property(v => v.FuelType).HasMaxLength(50).IsRequired();
+            entity.Property(v => v.TankCapacityLiters).HasPrecision(8, 2);
+            entity.Property(v => v.Note).HasMaxLength(500).IsRequired();
+            entity.Ignore(v => v.DisplayName);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(v => v.AssignedDriverId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<VehicleTrip>(entity =>
+        {
+            entity.ToTable("vehicle_trips");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.RouteDescription).HasMaxLength(500).IsRequired();
+            entity.Property(t => t.Note).HasMaxLength(500).IsRequired();
+            entity.Ignore(t => t.IsOpen);
+            entity.Ignore(t => t.DistanceKm);
+            entity.HasOne<Vehicle>()
+                .WithMany()
+                .HasForeignKey(t => t.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(t => t.DriverId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<FuelFill>(entity =>
+        {
+            entity.ToTable("fuel_fills");
+            entity.HasKey(f => f.Id);
+            entity.Property(f => f.Liters).HasPrecision(8, 2);
+            entity.Property(f => f.Cost).HasPrecision(10, 2);
+            entity.Property(f => f.Station).HasMaxLength(200).IsRequired();
+            entity.Property(f => f.Note).HasMaxLength(500).IsRequired();
+            entity.HasOne<Vehicle>()
+                .WithMany()
+                .HasForeignKey(f => f.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(f => f.DriverId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

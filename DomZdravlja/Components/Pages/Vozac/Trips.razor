@@ -1,0 +1,234 @@
+@page "/vozac/voznje"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject VehicleService VehicleService
+@inject VehicleTripService VehicleTripService
+@inject AuthService Auth
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Vozac })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Vožnje</h1>
+                <p>Evidentiranje početne i završne kilometraže rute</p>
+            </div>
+            @if (_openTrip is null && _vehicles.Count > 0)
+            {
+                <button class="btn btn-primary" @onclick="ShowStartForm">+ Nova vožnja</button>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-error" : "alert-success")">@_message</div>
+        }
+
+        @if (_openTrip is not null)
+        {
+            <div class="card form-card">
+                <h2>Zatvori otvorenu vožnju</h2>
+                <p class="info-text">
+                    Vozilo: <strong>@GetVehicleName(_openTrip.VehicleId)</strong> ·
+                    Početak: @_openTrip.StartMileage km (@_openTrip.StartedAt.ToString("dd.MM.yyyy HH:mm"))
+                    @if (!string.IsNullOrWhiteSpace(_openTrip.RouteDescription))
+                    {
+                        <text> · Ruta: @_openTrip.RouteDescription</text>
+                    }
+                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Završna kilometraža</label>
+                        <InputNumber @bind-Value="_endMileage" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Napomena (opcionalno)</label>
+                        <InputText @bind-Value="_endNote" class="form-control" />
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" @onclick="EndTrip">Završi vožnju</button>
+                </div>
+            </div>
+        }
+
+        @if (_showStartForm)
+        {
+            <div class="card form-card">
+                <h2>Nova vožnja</h2>
+                <EditForm Model="_startForm" OnValidSubmit="StartTrip">
+                    <div class="form-group">
+                        <label>Vozilo</label>
+                        <InputSelect TValue="int" Value="_startForm.VehicleId" ValueChanged="OnVehicleSelected" ValueExpression="() => _startForm.VehicleId" class="form-control">
+                            <option value="0">— Odaberite —</option>
+                            @foreach (var vehicle in _vehicles)
+                            {
+                                <option value="@vehicle.Id">@vehicle.DisplayName — @vehicle.CurrentMileage km</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Početna kilometraža</label>
+                            <InputNumber @bind-Value="_startForm.StartMileage" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Opis rute</label>
+                            <InputText @bind-Value="_startForm.RouteDescription" class="form-control" placeholder="npr. Dom zdravlja → Apoteka" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Napomena</label>
+                        <InputText @bind-Value="_startForm.Note" class="form-control" />
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Pokreni vožnju</button>
+                        <button type="button" class="btn btn-outline" @onclick="() => _showStartForm = false">Odustani</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+        <div class="card">
+            <h2>Historija vožnji</h2>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Početak</th>
+                        <th>Vozilo</th>
+                        <th>Ruta</th>
+                        <th>Od → Do</th>
+                        <th>Km</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var trip in _trips)
+                    {
+                        <tr>
+                            <td>@trip.StartedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@GetVehicleName(trip.VehicleId)</td>
+                            <td>@(string.IsNullOrWhiteSpace(trip.RouteDescription) ? "—" : trip.RouteDescription)</td>
+                            <td>@trip.StartMileage → @(trip.EndMileage?.ToString() ?? "…")</td>
+                            <td>@(trip.DistanceKm?.ToString() ?? "—")</td>
+                            <td>
+                                @if (trip.IsOpen)
+                                {
+                                    <span class="badge badge-warning">U toku</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-success">Završena</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_trips.Count == 0)
+            {
+                <div class="empty-state"><p>Još nema evidentiranih vožnji.</p></div>
+            }
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private List<Vehicle> _vehicles = [];
+    private List<VehicleTrip> _trips = [];
+    private VehicleTrip? _openTrip;
+    private bool _showStartForm;
+    private VehicleTrip _startForm = new();
+    private int _endMileage;
+    private string _endNote = string.Empty;
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        if (Auth.CurrentUser is null)
+            return;
+
+        _vehicles = await VehicleService.GetByDriverIdAsync(Auth.CurrentUser.Id);
+        _trips = await VehicleTripService.GetByDriverIdAsync(Auth.CurrentUser.Id);
+        _openTrip = await VehicleTripService.GetOpenTripForDriverAsync(Auth.CurrentUser.Id);
+        if (_openTrip is not null)
+            _endMileage = Math.Max(_openTrip.StartMileage, _vehicles.FirstOrDefault(v => v.Id == _openTrip.VehicleId)?.CurrentMileage ?? _openTrip.StartMileage);
+    }
+
+    private void ShowStartForm()
+    {
+        var first = _vehicles.FirstOrDefault();
+        _startForm = new VehicleTrip
+        {
+            VehicleId = first?.Id ?? 0,
+            StartMileage = first?.CurrentMileage ?? 0,
+            DriverId = Auth.CurrentUser!.Id
+        };
+        _showStartForm = true;
+        _message = null;
+    }
+
+    private Task OnVehicleSelected(int vehicleId)
+    {
+        _startForm.VehicleId = vehicleId;
+        var vehicle = _vehicles.FirstOrDefault(v => v.Id == vehicleId);
+        if (vehicle is not null)
+            _startForm.StartMileage = vehicle.CurrentMileage;
+        return Task.CompletedTask;
+    }
+
+    private async Task StartTrip()
+    {
+        if (Auth.CurrentUser is null)
+            return;
+
+        if (_startForm.VehicleId <= 0)
+        {
+            ShowMessage("Odaberite vozilo.", true);
+            return;
+        }
+
+        _startForm.DriverId = Auth.CurrentUser.Id;
+        var error = await VehicleTripService.StartTripAsync(_startForm);
+        if (error is not null)
+        {
+            ShowMessage(error, true);
+            return;
+        }
+
+        _showStartForm = false;
+        await LoadData();
+        ShowMessage("Vožnja je pokrenuta.", false);
+    }
+
+    private async Task EndTrip()
+    {
+        if (Auth.CurrentUser is null || _openTrip is null)
+            return;
+
+        var error = await VehicleTripService.EndTripAsync(_openTrip.Id, Auth.CurrentUser.Id, _endMileage, _endNote);
+        if (error is not null)
+        {
+            ShowMessage(error, true);
+            return;
+        }
+
+        _endNote = string.Empty;
+        await LoadData();
+        ShowMessage("Vožnja je uspješno završena.", false);
+    }
+
+    private string GetVehicleName(int vehicleId)
+    {
+        var vehicle = _vehicles.FirstOrDefault(v => v.Id == vehicleId);
+        return vehicle?.DisplayName ?? $"#{vehicleId}";
+    }
+
+    private void ShowMessage(string text, bool isError)
+    {
+        _message = text;
+        _isError = isError;
+    }
+}

@@ -221,6 +221,37 @@
                     </div>
                 }
             }
+
+            @if (Auth.IsInRole(UserRole.Vozac))
+            {
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-value">@_summary.Stats.AssignedVehicles</span>
+                        <span class="stat-label">Dodijeljena vozila</span>
+                    </div>
+                    <div class="stat-card warning">
+                        <span class="stat-value">@_summary.Stats.OpenTrips</span>
+                        <span class="stat-label">Otvorene vožnje</span>
+                    </div>
+                    <div class="stat-card success">
+                        <span class="stat-value">@_summary.Stats.DriverDistanceKm</span>
+                        <span class="stat-label">Pređeno km</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">@_summary.Stats.DriverFuelLiters.ToString("0.#")</span>
+                        <span class="stat-label">Natočeno litara</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Brze akcije</h2>
+                    <div class="header-actions">
+                        <a href="/vozac/voznje" class="btn btn-primary">Vožnje</a>
+                        <a href="/vozac/gorivo" class="btn btn-outline">Točenje goriva</a>
+                        <a href="/vozac/vozila" class="btn btn-outline">Moja vozila</a>
+                    </div>
+                </div>
+            }
         }
     </div>
 </AuthGuard>
@@ -240,6 +271,7 @@
             UserRole.Administrator => await DashboardService.GetAdminDashboardAsync(),
             UserRole.Moderator => await DashboardService.GetModeratorDashboardAsync(),
             UserRole.Korisnik => await DashboardService.GetUserDashboardAsync(Auth.CurrentUser.Id),
+            UserRole.Vozac => await DashboardService.GetVozacDashboardAsync(Auth.CurrentUser.Id),
             _ => new DashboardSummary()
         };
     }
@@ -249,6 +281,7 @@
         UserRole.Administrator => "Obavijesti o zalihama, rokovima trajanja i zahtjevima",
         UserRole.Moderator => "Pregled zahtjeva koji zahtijevaju vašu pažnju",
         UserRole.Korisnik => "Status vaših zahtjeva za lijekove",
+        UserRole.Vozac => "Pregled vozila, vožnji i potrošnje goriva",
         _ => "Pregled"
     };
 

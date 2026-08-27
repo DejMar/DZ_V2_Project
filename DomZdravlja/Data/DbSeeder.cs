@@ -56,5 +56,37 @@ public class DbSeeder
             );
             await context.SaveChangesAsync();
         }
+
+        if (!await context.Users.AnyAsync(u => u.Username == "vozac1"))
+        {
+            await context.Users.AddAsync(new User
+            {
+                Username = "vozac1",
+                Password = "vozac123",
+                Role = UserRole.Vozac,
+                FullName = "Vozač Petar Nikolić",
+                IsActive = true
+            });
+            await context.SaveChangesAsync();
+        }
+
+        if (!await context.Vehicles.AnyAsync())
+        {
+            var driver = await context.Users.FirstOrDefaultAsync(u => u.Username == "vozac1");
+            await context.Vehicles.AddAsync(new Vehicle
+            {
+                PlateNumber = "A12-B-345",
+                Brand = "Volkswagen",
+                Model = "Transporter",
+                Year = 2019,
+                FuelType = "Dizel",
+                TankCapacityLiters = 70,
+                CurrentMileage = 125000,
+                AssignedDriverId = driver?.Id,
+                Note = "Vozilo za dostavu lijekova",
+                IsActive = true
+            });
+            await context.SaveChangesAsync();
+        }
     }
 }

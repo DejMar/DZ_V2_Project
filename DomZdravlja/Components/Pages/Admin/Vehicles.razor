@@ -1,0 +1,258 @@
+@page "/admin/vozila"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject VehicleService VehicleService
+@inject UserService UserService
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Administrator })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Vozila</h1>
+                <p>Kreiranje vozila i dodjela vozačima</p>
+            </div>
+            <button class="btn btn-primary" @onclick="ShowAddForm">+ Dodaj vozilo</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-error" : "alert-success")">@_message</div>
+        }
+
+        @if (_showForm)
+        {
+            <div class="card form-card">
+                <h2>@(_editingId.HasValue ? "Uredi vozilo" : "Novo vozilo")</h2>
+                <EditForm Model="_form" OnValidSubmit="SaveVehicle">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Registarska oznaka</label>
+                            <InputText @bind-Value="_form.PlateNumber" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Godina</label>
+                            <InputNumber @bind-Value="_form.Year" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Marka</label>
+                            <InputText @bind-Value="_form.Brand" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Model</label>
+                            <InputText @bind-Value="_form.Model" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Vrsta goriva</label>
+                            <InputSelect @bind-Value="_form.FuelType" class="form-control">
+                                <option value="Dizel">Dizel</option>
+                                <option value="Benzin">Benzin</option>
+                                <option value="Plin">Plin</option>
+                                <option value="Hibrid">Hibrid</option>
+                                <option value="Električno">Električno</option>
+                            </InputSelect>
+                        </div>
+                        <div class="form-group">
+                            <label>Kapacitet rezervoara (L)</label>
+                            <InputNumber @bind-Value="_form.TankCapacityLiters" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Trenutna kilometraža</label>
+                            <InputNumber @bind-Value="_form.CurrentMileage" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label>Dodijeljeni vozač</label>
+                            <InputSelect @bind-Value="_form.AssignedDriverId" class="form-control">
+                                <option value="">— Nije dodijeljeno —</option>
+                                @foreach (var driver in _drivers)
+                                {
+                                    <option value="@driver.Id">@driver.FullName</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Napomena</label>
+                        <InputTextArea @bind-Value="_form.Note" class="form-control" />
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Spremi</button>
+                        <button type="button" class="btn btn-outline" @onclick="CancelForm">Odustani</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Oznaka</th>
+                        <th>Vozilo</th>
+                        <th>Gorivo</th>
+                        <th>Km</th>
+                        <th>Vozač</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var vehicle in _vehicles)
+                    {
+                        <tr class="@(vehicle.IsActive ? "" : "row-inactive")">
+                            <td><strong>@vehicle.PlateNumber</strong></td>
+                            <td>@vehicle.Brand @vehicle.Model (@vehicle.Year)</td>
+                            <td>@vehicle.FuelType / @vehicle.TankCapacityLiters L</td>
+                            <td>@vehicle.CurrentMileage km</td>
+                            <td>@GetDriverName(vehicle.AssignedDriverId)</td>
+                            <td>
+                                @if (vehicle.IsActive)
+                                {
+                                    <span class="badge badge-success">Aktivno</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-danger">Neaktivno</span>
+                                }
+                            </td>
+                            <td class="actions">
+                                <button class="btn btn-sm btn-outline" @onclick="() => EditVehicle(vehicle)">Uredi</button>
+                                @if (vehicle.IsActive)
+                                {
+                                    <button class="btn btn-sm btn-danger" @onclick="() => ToggleActive(vehicle.Id, false)">Deaktiviraj</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-success" @onclick="() => ToggleActive(vehicle.Id, true)">Aktiviraj</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (_vehicles.Count == 0)
+            {
+                <div class="empty-state"><p>Još nema unesenih vozila.</p></div>
+            }
+        </div>
+    </div>
+</AuthGuard>
+
+@code {
+    private List<Vehicle> _vehicles = [];
+    private List<User> _drivers = [];
+    private bool _showForm;
+    private int? _editingId;
+    private Vehicle _form = new();
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        _vehicles = await VehicleService.GetAllAsync();
+        _drivers = await UserService.GetDriversAsync();
+    }
+
+    private void ShowAddForm()
+    {
+        _form = new Vehicle
+        {
+            Year = DateTime.Today.Year,
+            FuelType = "Dizel",
+            TankCapacityLiters = 60
+        };
+        _editingId = null;
+        _showForm = true;
+        _message = null;
+    }
+
+    private void EditVehicle(Vehicle vehicle)
+    {
+        _form = new Vehicle
+        {
+            Id = vehicle.Id,
+            PlateNumber = vehicle.PlateNumber,
+            Brand = vehicle.Brand,
+            Model = vehicle.Model,
+            Year = vehicle.Year,
+            FuelType = vehicle.FuelType,
+            TankCapacityLiters = vehicle.TankCapacityLiters,
+            CurrentMileage = vehicle.CurrentMileage,
+            AssignedDriverId = vehicle.AssignedDriverId,
+            Note = vehicle.Note,
+            IsActive = vehicle.IsActive
+        };
+        _editingId = vehicle.Id;
+        _showForm = true;
+        _message = null;
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _editingId = null;
+    }
+
+    private async Task SaveVehicle()
+    {
+        if (string.IsNullOrWhiteSpace(_form.PlateNumber) ||
+            string.IsNullOrWhiteSpace(_form.Brand) ||
+            string.IsNullOrWhiteSpace(_form.Model))
+        {
+            ShowMessage("Oznaka, marka i model su obavezni.", true);
+            return;
+        }
+
+        if (_form.Year < 1980 || _form.Year > DateTime.Today.Year + 1)
+        {
+            ShowMessage("Godina vozila nije validna.", true);
+            return;
+        }
+
+        if (_form.CurrentMileage < 0 || _form.TankCapacityLiters <= 0)
+        {
+            ShowMessage("Kilometraža i kapacitet rezervoara moraju biti validni.", true);
+            return;
+        }
+
+        if (await VehicleService.PlateExistsAsync(_form.PlateNumber, _editingId))
+        {
+            ShowMessage("Vozilo s tom registarskom oznakom već postoji.", true);
+            return;
+        }
+
+        if (_editingId.HasValue)
+            await VehicleService.UpdateAsync(_form);
+        else
+            await VehicleService.AddAsync(_form);
+
+        _showForm = false;
+        await LoadData();
+        ShowMessage("Vozilo je uspješno spremljeno.", false);
+    }
+
+    private async Task ToggleActive(int id, bool isActive)
+    {
+        await VehicleService.SetActiveAsync(id, isActive);
+        await LoadData();
+        ShowMessage(isActive ? "Vozilo je aktivirano." : "Vozilo je deaktivirano.", false);
+    }
+
+    private string GetDriverName(int? id) =>
+        id is int driverId
+            ? _drivers.FirstOrDefault(d => d.Id == driverId)?.FullName ?? "Nepoznat"
+            : "—";
+
+    private void ShowMessage(string text, bool isError)
+    {
+        _message = text;
+        _isError = isError;
+    }
+}

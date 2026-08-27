@@ -1,0 +1,152 @@
+@page "/admin/flota-statistika"
+@rendermode InteractiveServer
+@using DomZdravlja.Models
+@inject FleetStatsService FleetStatsService
+
+<AuthGuard AllowedRoles="@(new[] { UserRole.Administrator })">
+    <div class="page">
+        <div class="page-header">
+            <div>
+                <h1>Statistika flote</h1>
+                <p>Pregled vozača, vozila, kilometara i potrošnje goriva</p>
+            </div>
+            <button class="btn btn-outline" @onclick="LoadData">Osvježi</button>
+        </div>
+
+        @if (_summary is not null)
+        {
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-value">@_summary.TotalVehicles</span>
+                    <span class="stat-label">Vozila</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">@_summary.TotalDrivers</span>
+                    <span class="stat-label">Vozači</span>
+                </div>
+                <div class="stat-card success">
+                    <span class="stat-value">@_summary.TotalDistanceKm</span>
+                    <span class="stat-label">Ukupno km</span>
+                </div>
+                <div class="stat-card warning">
+                    <span class="stat-value">@_summary.TotalFuelLiters.ToString("0.#")</span>
+                    <span class="stat-label">Ukupno litara</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">@_summary.TotalFuelCost.ToString("0.00")</span>
+                    <span class="stat-label">Trošak goriva</span>
+                </div>
+                <div class="stat-card warning">
+                    <span class="stat-value">@_summary.OpenTrips</span>
+                    <span class="stat-label">Otvorene vožnje</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Statistika po vozilima</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Vozilo</th>
+                            <th>Vozač</th>
+                            <th>Km</th>
+                            <th>Vožnje</th>
+                            <th>Pređeno</th>
+                            <th>Gorivo (L)</th>
+                            <th>Trošak</th>
+                            <th>L/100km</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _summary.Vehicles)
+                        {
+                            <tr class="@(row.IsActive ? "" : "row-inactive")">
+                                <td><strong>@row.PlateNumber</strong><br /><small>@row.DisplayName</small></td>
+                                <td>@(row.DriverName ?? "—")</td>
+                                <td>@row.CurrentMileage</td>
+                                <td>@row.TripCount</td>
+                                <td>@row.TotalDistanceKm km</td>
+                                <td>@row.TotalFuelLiters.ToString("0.##")</td>
+                                <td>@row.TotalFuelCost.ToString("0.00")</td>
+                                <td>@(row.AvgConsumptionLPer100Km?.ToString("0.00") ?? "—")</td>
+                                <td>
+                                    @if (row.HasOpenTrip)
+                                    {
+                                        <span class="badge badge-warning">U vožnji</span>
+                                    }
+                                    else if (row.IsActive)
+                                    {
+                                        <span class="badge badge-success">Aktivno</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-danger">Neaktivno</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (_summary.Vehicles.Count == 0)
+                {
+                    <div class="empty-state"><p>Nema podataka o vozilima.</p></div>
+                }
+            </div>
+
+            <div class="card">
+                <h2>Statistika po vozačima</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Vozač</th>
+                            <th>Dodijeljena vozila</th>
+                            <th>Vožnje</th>
+                            <th>Pređeno km</th>
+                            <th>Točenja</th>
+                            <th>Gorivo (L)</th>
+                            <th>Trošak</th>
+                            <th>Otvorene</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _summary.Drivers)
+                        {
+                            <tr>
+                                <td><strong>@row.DriverName</strong></td>
+                                <td>@row.AssignedVehicleCount</td>
+                                <td>@row.TripCount</td>
+                                <td>@row.TotalDistanceKm</td>
+                                <td>@row.FuelFillCount</td>
+                                <td>@row.TotalFuelLiters.ToString("0.##")</td>
+                                <td>@row.TotalFuelCost.ToString("0.00")</td>
+                                <td>
+                                    @if (row.OpenTripCount > 0)
+                                    {
+                                        <span class="badge badge-warning">@row.OpenTripCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span>0</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (_summary.Drivers.Count == 0)
+                {
+                    <div class="empty-state"><p>Nema vozača. Kreirajte korisnika s ulogom Vozač.</p></div>
+                }
+            </div>
+        }
+    </div>
+</AuthGuard>
+
+@code {
+    private FleetStatsSummary? _summary;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData() => _summary = await FleetStatsService.GetSummaryAsync();
+}
