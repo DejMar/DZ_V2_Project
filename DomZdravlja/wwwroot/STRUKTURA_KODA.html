@@ -207,6 +207,8 @@
 <header>
     <h1>Struktura koda</h1>
     <p>Dom Zdravlja — objašnjenje fajlova i arhitekture projekta</p>
+    <p style="margin-top: 0.75rem; font-size: 0.9rem; opacity: 0.9;">Student: Dejan Marjanovic — FIT 16/25 ·
+        <a href="https://github.com/DejMar/DZ_V2_Project" style="color: #ccfbf1;">github.com/DejMar/DZ_V2_Project</a></p>
 </header>
 
 <nav class="toc">
@@ -258,8 +260,8 @@
     ├── <span class="file">ExportEndpoints.cs</span>      <span class="comment">← CSV i HTML izvoz izvještaja</span>
     ├── <span class="file">DomZdravlja.csproj</span>      <span class="comment">← Definicija .NET projekta</span>
     ├── <span class="file">appsettings.json</span>        <span class="comment">← Konfiguracija aplikacije</span>
-    ├── <span class="folder">Models/</span>                 <span class="comment">← Entiteti (8 fajlova)</span>
-    ├── <span class="folder">Services/</span>               <span class="comment">← Poslovna logika (12 fajlova)</span>
+    ├── <span class="folder">Models/</span>                 <span class="comment">← Entiteti i DTO modeli</span>
+    ├── <span class="folder">Services/</span>               <span class="comment">← Poslovna logika</span>
     ├── <span class="folder">Components/</span>             <span class="comment">← Blazor UI</span>
     │   ├── <span class="file">App.razor</span>
     │   ├── <span class="file">Routes.razor</span>
@@ -278,12 +280,18 @@
     │       ├── <span class="folder">Admin/</span>
     │       │   ├── <span class="file">Medicines.razor</span>
     │       │   ├── <span class="file">Users.razor</span>
+    │       │   ├── <span class="file">Vehicles.razor</span>
+    │       │   ├── <span class="file">FleetStats.razor</span>
     │       │   └── <span class="file">Reports.razor</span>
     │       ├── <span class="folder">Moderator/</span>
     │       │   └── <span class="file">Requests.razor</span>
-    │       └── <span class="folder">User/</span>
-    │           ├── <span class="file">NewRequest.razor</span>
-    │           └── <span class="file">MyRequests.razor</span>
+    │       ├── <span class="folder">User/</span>
+    │       │   ├── <span class="file">NewRequest.razor</span>
+    │       │   └── <span class="file">MyRequests.razor</span>
+    │       └── <span class="folder">Vozac/</span>
+    │           ├── <span class="file">MyVehicles.razor</span>
+    │           ├── <span class="file">Trips.razor</span>
+    │           └── <span class="file">Fuel.razor</span>
     ├── <span class="folder">Data/</span>                   <span class="comment">← EF Core i MySQL konfiguracija</span>
     │   ├── <span class="file">AppDbContext.cs</span>
     │   ├── <span class="file">DbSeeder.cs</span>
@@ -350,7 +358,7 @@
                 <tr>
                     <td class="file-path">UserRole.cs</td>
                     <td><code>UserRole</code></td>
-                    <td>Enum: Administrator, Moderator, Korisnik</td>
+                    <td>Enum: Administrator, Moderator, Korisnik, Vozac</td>
                 </tr>
                 <tr>
                     <td class="file-path">Medicine.cs</td>
@@ -385,7 +393,27 @@
                 <tr>
                     <td class="file-path">DashboardSummary.cs</td>
                     <td><code>DashboardSummary</code>, <code>DashboardAlert</code>, itd.</td>
-                    <td>Modeli za dashboard: obavijesti, statistika, kritični lijekovi, zahtjevi, prijemi (ne čuvaju se u bazi)</td>
+                    <td>Modeli za dashboard: obavijesti, statistika, kritični lijekovi, zahtjevi, prijemi, flota (ne čuvaju se u bazi)</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Vehicle.cs</td>
+                    <td><code>Vehicle</code></td>
+                    <td>Vozilo: oznaka, marka, model, godina, gorivo, rezervoar, km, dodijeljeni vozač, napomena</td>
+                </tr>
+                <tr>
+                    <td class="file-path">VehicleTrip.cs</td>
+                    <td><code>VehicleTrip</code></td>
+                    <td>Vožnja: početna/završna km, ruta, vozač, vozilo, datumi</td>
+                </tr>
+                <tr>
+                    <td class="file-path">FuelFill.cs</td>
+                    <td><code>FuelFill</code></td>
+                    <td>Točenje goriva: litri, cijena, pun rezervoar, kilometraža, stanica</td>
+                </tr>
+                <tr>
+                    <td class="file-path">VehicleStats.cs</td>
+                    <td><code>FleetStatsSummary</code>, <code>VehicleStatRow</code>, <code>DriverStatRow</code>, <code>PeriodStatRow</code></td>
+                    <td>DTO za statistiku flote ukupno, po godinama i mjesecima</td>
                 </tr>
             </tbody>
         </table>
@@ -399,7 +427,8 @@
             <div class="title">AppDbContext.cs</div>
             <div class="desc">
                 EF Core kontekst koji mapira entitete na MySQL tabele:
-                <code>users</code>, <code>medicines</code>, <code>ambulances</code>, <code>requests</code> i <code>stock_intakes</code>.
+                <code>users</code>, <code>medicines</code>, <code>ambulances</code>, <code>requests</code>,
+                <code>stock_intakes</code>, <code>vehicles</code>, <code>vehicle_trips</code> i <code>fuel_fills</code>.
                 Definiše ključeve, relacije, ograničenja i ignorisane izračunate propertije.
             </div>
             <div class="uses">Koriste: servisi, endpointi, migracije i DbSeeder</div>
@@ -409,7 +438,7 @@
             <div class="title">DbSeeder.cs</div>
             <div class="desc">
                 Pri prvom pokretanju aplikacije ubacuje demo podatke u bazu ako su tabele prazne:
-                5 korisnika, 3 ambulante i 15 lijekova sa rokom trajanja.
+                6 korisnika (uključujući vozača), 3 ambulante, 15 lijekova i demo vozilo.
             </div>
             <div class="uses">Poziva: Program.cs pri startu</div>
         </div>
@@ -491,9 +520,45 @@
             <div class="title">DashboardService.cs</div>
             <div class="desc">
                 Generiše <code>DashboardSummary</code> po ulozi: admin (kritični lijekovi, pending, prijemi),
-                moderator (zahtjevi na čekanju, stariji od 2 dana, odobreni), korisnik (statistika vlastitih zahtjeva).
+                moderator (zahtjevi na čekanju, stariji od 2 dana, odobreni), korisnik (statistika vlastitih zahtjeva),
+                vozač (vozila, otvorene vožnje, km, gorivo).
             </div>
             <div class="uses">Koristi: Dashboard.razor</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">VehicleService.cs</div>
+            <div class="desc">
+                CRUD vozila, dodjela vozaču, jedinstvena registarska oznaka, ažuriranje kilometraže.
+                Radi sa tabelom <code>vehicles</code>.
+            </div>
+            <div class="uses">Koriste: Vehicles.razor, MyVehicles.razor, Trips.razor, Fuel.razor</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">VehicleTripService.cs</div>
+            <div class="desc">
+                Pokretanje i zatvaranje vožnje. Validira da vozač vozi samo dodijeljeno vozilo,
+                da nema dvije otvorene vožnje i da km ne ide unazad.
+            </div>
+            <div class="uses">Koriste: Trips.razor, DashboardService, FleetStatsService</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">FuelFillService.cs</div>
+            <div class="desc">
+                Evidentiranje točenja goriva (litri, cijena, pun rezervoar, stanica).
+                Radi sa tabelom <code>fuel_fills</code>.
+            </div>
+            <div class="uses">Koriste: Fuel.razor, FleetStatsService</div>
+        </div>
+
+        <div class="file-card">
+            <div class="title">FleetStatsService.cs</div>
+            <div class="desc">
+                Statistika flote: ukupno, po godini ili mjesecu. Vraća agregate po vozilima, vozačima i periodima.
+            </div>
+            <div class="uses">Koristi: FleetStats.razor</div>
         </div>
     </section>
 
@@ -533,11 +598,11 @@
             <tbody>
                 <tr>
                     <td class="file-path">MainLayout.razor</td>
-                    <td>Glavni layout: sidebar sa linkovima (Pregled, Lijekovi, Prijem zaliha, Korisnici, Izvještaji za admina), područje <code>@Body</code>.</td>
+                    <td>Glavni layout: sidebar sa linkovima po ulozi (lijekovi, vozila, vožnje, gorivo), područje <code>@Body</code>.</td>
                 </tr>
                 <tr>
                     <td class="file-path">SidebarFooter.razor</td>
-                    <td>Donji dio sidebara: ime korisnika, uloga i link za odjavu (<code>/auth/logout</code>).</td>
+                    <td>Donji dio sidebara: ime korisnika, uloga, odjava i footnote autora projekta.</td>
                 </tr>
                 <tr>
                     <td class="file-path">MainLayout.razor.css</td>
@@ -574,7 +639,7 @@
                     <td class="file-path">Login.razor</td>
                     <td><code>/prijava</code></td>
                     <td>Svi</td>
-                    <td>HTML forma za prijavu — šalje POST na <code>/auth/login</code></td>
+                    <td>HTML forma za prijavu — šalje POST na <code>/auth/login</code>; sadrži demo naloze i footnote autora</td>
                 </tr>
                 <tr>
                     <td class="file-path">Error.razor</td>
@@ -592,7 +657,19 @@
                     <td class="file-path">Admin/Users.razor</td>
                     <td><code>/admin/korisnici</code></td>
                     <td>Administrator</td>
-                    <td>Upravljanje korisnicima: dodavanje, uređivanje, aktivacija/deaktivacija</td>
+                    <td>Upravljanje korisnicima: dodavanje, uređivanje, aktivacija/deaktivacija, uloga Vozač</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Admin/Vehicles.razor</td>
+                    <td><code>/admin/vozila</code></td>
+                    <td>Administrator</td>
+                    <td>CRUD vozila i dodjela vozaču</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Admin/FleetStats.razor</td>
+                    <td><code>/admin/flota-statistika</code></td>
+                    <td>Administrator</td>
+                    <td>Statistika flote ukupno, po godinama i mjesecima</td>
                 </tr>
                 <tr>
                     <td class="file-path">Admin/Reports.razor</td>
@@ -617,6 +694,24 @@
                     <td><code>/korisnik/moji-zahtjevi</code></td>
                     <td>Korisnik</td>
                     <td>Pregled vlastitih zahtjeva i njihovih statusa</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Vozac/MyVehicles.razor</td>
+                    <td><code>/vozac/vozila</code></td>
+                    <td>Vozač</td>
+                    <td>Pregled dodijeljenih vozila</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Vozac/Trips.razor</td>
+                    <td><code>/vozac/voznje</code></td>
+                    <td>Vozač</td>
+                    <td>Pokretanje i zatvaranje vožnje (početna/završna km)</td>
+                </tr>
+                <tr>
+                    <td class="file-path">Vozac/Fuel.razor</td>
+                    <td><code>/vozac/gorivo</code></td>
+                    <td>Vozač</td>
+                    <td>Evidentiranje točenja goriva</td>
                 </tr>
             </tbody>
         </table>
@@ -682,7 +777,7 @@
                 <tr>
                     <td class="file-path">Data/DbSeeder.cs</td>
                     <td>
-                        Početni demo podaci za korisnike, ambulante i lijekove.
+                        Početni demo podaci za korisnike, ambulante, lijekove i vozilo.
                     </td>
                 </tr>
                 <tr>
@@ -740,6 +835,11 @@
                     <td><strong>Prijem zaliha</strong></td>
                     <td><code>PrijemZaliha.razor</code>, <code>StockIntakeService.cs</code>, <code>StockIntake.cs</code></td>
                     <td>Evidentiranje dolaska robe, povećanje zalihe, historija u tabeli <code>stock_intakes</code></td>
+                </tr>
+                <tr>
+                    <td><strong>Uloga Vozač i flota</strong></td>
+                    <td><code>Vehicles.razor</code>, <code>Trips.razor</code>, <code>Fuel.razor</code>, <code>FleetStats.razor</code></td>
+                    <td>Vozila, vožnje, točenje goriva i statistika po periodima</td>
                 </tr>
             </tbody>
         </table>
@@ -804,6 +904,19 @@
     →  vraća ReportSummary  →  prikazuje na stranici
         </div>
 
+        <h3>Vozač evidentira vožnju</h3>
+        <div class="tree">
+<span class="comment">Trips.razor</span>  →  <span class="comment">VehicleTripService.StartTripAsync() / EndTripAsync()</span>
+    →  tabele <span class="comment">vehicle_trips</span> i <span class="comment">vehicles</span> (ažurira km)
+        </div>
+
+        <h3>Admin pregleda statistiku flote</h3>
+        <div class="tree">
+<span class="comment">FleetStats.razor</span>  →  <span class="comment">FleetStatsService.GetSummaryAsync(filter)</span>
+    →  filtrira vožnje i točenja po ukupno / godina / mjesec
+    →  vraća agregate po vozilima, vozačima i periodima
+        </div>
+
         <h3>Registracija servisa (dependency injection)</h3>
         <p>U <code>Program.cs</code> servisi se registruju sa različitim životnim ciklusima:</p>
         <table>
@@ -818,7 +931,7 @@
                 </tr>
                 <tr>
                     <td><code>Scoped</code></td>
-                    <td>AuthService, UserService, MedicineService, RequestService, ReportExportService, StockIntakeService, DashboardService, itd.</td>
+                    <td>AuthService, UserService, MedicineService, RequestService, VehicleService, VehicleTripService, FuelFillService, FleetStatsService, DashboardService, itd.</td>
                     <td>Nova instanca po HTTP zahtjevu / Blazor circuit-u</td>
                 </tr>
             </tbody>
@@ -828,7 +941,9 @@
 </main>
 
 <footer>
-    Dom Zdravlja — Struktura koda &nbsp;|&nbsp;
+    Student: Dejan Marjanovic — FIT 16/25 &nbsp;|&nbsp;
+    <a href="https://github.com/DejMar/DZ_V2_Project" style="color: var(--primary);">github.com/DejMar/DZ_V2_Project</a>
+    &nbsp;|&nbsp;
     <a href="DOKUMENTACIJA.html" style="color: var(--primary);">Dokumentacija i test scenariji</a>
 </footer>
 

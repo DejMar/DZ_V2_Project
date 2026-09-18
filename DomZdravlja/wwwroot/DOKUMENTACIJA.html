@@ -124,6 +124,7 @@
         .badge-admin { background: #dbeafe; color: #1e40af; }
         .badge-mod { background: #fef3c7; color: #92400e; }
         .badge-user { background: #d1fae5; color: #065f46; }
+        .badge-driver { background: #ede9fe; color: #5b21b6; }
 
         .flow {
             display: flex;
@@ -248,7 +249,9 @@
 
 <header>
     <h1>Dom Zdravlja</h1>
-    <p>Evidencija lijekova — dokumentacija i test scenariji</p>
+    <p>Evidencija lijekova i flote — dokumentacija i test scenariji</p>
+    <p style="margin-top: 0.75rem; font-size: 0.9rem; opacity: 0.9;">Student: Dejan Marjanovic — FIT 16/25 ·
+        <a href="https://github.com/DejMar/DZ_V2_Project" style="color: #ccfbf1;">github.com/DejMar/DZ_V2_Project</a></p>
 </header>
 
 <nav class="toc">
@@ -278,7 +281,7 @@
         <div class="arch-grid">
             <div class="arch-card">
                 <strong>Models/</strong>
-                <span>Entiteti: Lijek, Korisnik, Zahtjev, Ambulanta</span>
+                <span>Entiteti: Lijek, Korisnik, Zahtjev, Ambulanta, Vozilo, Vožnja, Točenje</span>
             </div>
             <div class="arch-card">
                 <strong>Services/</strong>
@@ -309,7 +312,7 @@
                 <tr>
                     <td><span class="badge badge-admin">Administrator</span></td>
                     <td>Upravlja zalihama u domu zdravlja</td>
-                    <td>Unosi/uređuje/briše lijekove, evidentira prijem zaliha, upravlja korisnicima, pregleda dashboard i izvozi izvještaje</td>
+                    <td>Unosi/uređuje/briše lijekove, upravlja korisnicima i vozilima, pregleda statistiku flote i izvozi izvještaje</td>
                 </tr>
                 <tr>
                     <td><span class="badge badge-mod">Moderator</span></td>
@@ -320,6 +323,11 @@
                     <td><span class="badge badge-user">Korisnik</span></td>
                     <td>Doktor u ambulanti</td>
                     <td>Prati dashboard sa statusom zahtjeva, šalje zahtjeve za lijekove za svoju ambulantu</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-driver">Vozač</span></td>
+                    <td>Vozač službenog vozila</td>
+                    <td>Vidi dodijeljena vozila, vodi vožnje (početna/završna km) i evidentira točenje goriva</td>
                 </tr>
             </tbody>
         </table>
@@ -340,6 +348,19 @@
             <div class="flow-step">Zaliha se smanjuje</div>
             <span class="flow-arrow">→</span>
             <div class="flow-step">Dashboard prikazuje obavijesti</div>
+        </div>
+
+        <p>Proces flote:</p>
+        <div class="flow">
+            <div class="flow-step">Admin kreira vozača i vozilo</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Dodijeli vozilo vozaču</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Vozač vodi rutu (km od–do)</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Vozač evidentira točenje</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Admin pregleda statistiku po periodima</div>
         </div>
 
         <h3>Statusi lijekova</h3>
@@ -371,17 +392,23 @@
 
     <section id="pokretanje">
         <h2>4. Pokretanje aplikacije</h2>
-        <h3>Preduvjet</h3>
-        <p>Instaliran <a href="https://dotnet.microsoft.com/download/dotnet/8.0">.NET 8 SDK</a>. Provjera:</p>
+        <h3>Preduvjeti</h3>
+        <ul>
+            <li>Instaliran <a href="https://dotnet.microsoft.com/download/dotnet/8.0">.NET 8 SDK</a></li>
+            <li>Pokrenut MySQL na <code>localhost:3306</code></li>
+        </ul>
         <pre>dotnet --version</pre>
 
         <h3>Koraci</h3>
         <pre>cd DomZdravlja
+dotnet restore
 dotnet run</pre>
 
-        <p>Otvori u browseru (Chrome preporučen):</p>
+        <p>Otvori u browseru:</p>
         <pre>http://localhost:5141/prijava</pre>
 
+        <p>Connection string je u <code>appsettings.json</code>. Ako MySQL root ima lozinku, unesi je u
+            <code>Password=</code>. Pri startu se automatski primjenjuju migracije i seed demo podataka.</p>
         <p><em>Napomena: Koristi <code>http://</code> a ne <code>https://</code> u development modu.
             Port može biti drugačiji — provjeri terminal nakon <code>dotnet run</code>.</em></p>
     </section>
@@ -428,10 +455,16 @@ dotnet run</pre>
                     <td><span class="badge badge-user">Korisnik</span></td>
                     <td>Stomatološka ambulanta</td>
                 </tr>
+                <tr>
+                    <td><code>vozac1</code></td>
+                    <td><code>vozac123</code></td>
+                    <td><span class="badge badge-driver">Vozač</span></td>
+                    <td>Demo vozilo A12-B-345</td>
+                </tr>
             </tbody>
         </table>
-        <p><em>Napomena: Početni korisnici se automatski upisuju u MySQL bazu pri prvom pokretanju aplikacije
-            ako je tabela <code>users</code> prazna.</em></p>
+        <p><em>Napomena: Početni korisnici i demo vozilo se automatski upisuju u MySQL bazu pri prvom pokretanju
+            ako su tabele prazne.</em></p>
     </section>
 
     <section id="funkcionalnosti">
@@ -466,6 +499,7 @@ dotnet run</pre>
             <li><strong>Administrator</strong> — istekli lijekovi, ističe uskoro, niska zaliha, pending zahtjevi, kritični lijekovi, posljednji prijemi zaliha</li>
             <li><strong>Moderator</strong> — broj zahtjeva na čekanju, zahtjevi stariji od 2 dana, odobreni koji čekaju izdavanje</li>
             <li><strong>Korisnik</strong> — statistika vlastitih zahtjeva i posljednjih 5 zahtjeva sa statusom</li>
+            <li><strong>Vozač</strong> — dodijeljena vozila, otvorene vožnje, pređeni km i natočeno gorivo</li>
         </ul>
         <p>Nakon prijave korisnik se automatski preusmjerava na dashboard.</p>
 
@@ -477,6 +511,31 @@ dotnet run</pre>
             <li>pregledati historiju svih prijema (datum, ko je uneo, količina)</li>
         </ul>
         <p>Podaci se čuvaju u MySQL tabeli <code>stock_intakes</code>.</p>
+
+        <h3>6.6 Upravljanje vozilima</h3>
+        <p>Administrator na stranici <code>/admin/vozila</code> može:</p>
+        <ul>
+            <li>dodati vozilo (registarska oznaka, marka, model, godina, vrsta goriva, kapacitet rezervoara, kilometraža, napomena)</li>
+            <li>dodijeliti vozilo vozaču</li>
+            <li>aktivirati ili deaktivirati vozilo</li>
+        </ul>
+
+        <h3>6.7 Vožnje i točenje goriva</h3>
+        <p>Vozač na stranicama <code>/vozac/voznje</code> i <code>/vozac/gorivo</code> može:</p>
+        <ul>
+            <li>pokrenuti vožnju sa početnom kilometražom i opisom rute</li>
+            <li>zatvoriti vožnju sa završnom kilometražom (ne može imati dvije otvorene vožnje)</li>
+            <li>evidentirati točenje: litri, cijena, stanica, kilometraža i oznaka „pun rezervoar“</li>
+        </ul>
+
+        <h3>6.8 Statistika flote</h3>
+        <p>Administrator na <code>/admin/flota-statistika</code> vidi km, litre, trošak i L/100km:</p>
+        <ul>
+            <li><strong>Ukupno</strong> — svi podaci + pregled po godinama</li>
+            <li><strong>Po godinama</strong> — izbor godine + pregled po mjesecima</li>
+            <li><strong>Po mjesecima</strong> — izbor godine i mjeseca</li>
+        </ul>
+        <p>Statistika je dostupna po vozilima i po vozačima.</p>
     </section>
 
     <section id="stranice">
@@ -490,13 +549,18 @@ dotnet run</pre>
                 <tr><td><code>/pregled</code></td><td>Svi</td><td>Centralni dashboard sa obavijestima (po ulozi)</td></tr>
                 <tr><td><code>/prijem-zaliha</code></td><td>Admin, Moderator</td><td>Evidentiranje dolaska robe i historija prijema</td></tr>
                 <tr><td><code>/admin/lijekovi</code></td><td>Administrator</td><td>CRUD nad lijekovima (uključujući rok trajanja)</td></tr>
-                <tr><td><code>/admin/korisnici</code></td><td>Administrator</td><td>Upravljanje korisnicima i ulogama</td></tr>
+                <tr><td><code>/admin/korisnici</code></td><td>Administrator</td><td>Upravljanje korisnicima i ulogama (uključujući Vozač)</td></tr>
+                <tr><td><code>/admin/vozila</code></td><td>Administrator</td><td>Kreiranje vozila i dodjela vozaču</td></tr>
+                <tr><td><code>/admin/flota-statistika</code></td><td>Administrator</td><td>Statistika flote ukupno, po godinama i mjesecima</td></tr>
                 <tr><td><code>/admin/izvjestaji</code></td><td>Administrator</td><td>Pregled zaliha, statistike i izvoz CSV/PDF</td></tr>
                 <tr><td><code>/admin/export/csv</code></td><td>Administrator</td><td>Preuzimanje izvještaja u CSV formatu</td></tr>
                 <tr><td><code>/admin/export/report</code></td><td>Administrator</td><td>Štampani HTML izvještaj (za PDF)</td></tr>
                 <tr><td><code>/moderator/zahtjevi</code></td><td>Moderator</td><td>Obrada zahtjeva (odobri/odbij/izdaj)</td></tr>
                 <tr><td><code>/korisnik/novi-zahtjev</code></td><td>Korisnik</td><td>Slanje novog zahtjeva za lijek</td></tr>
                 <tr><td><code>/korisnik/moji-zahtjevi</code></td><td>Korisnik</td><td>Pregled vlastitih zahtjeva</td></tr>
+                <tr><td><code>/vozac/vozila</code></td><td>Vozač</td><td>Pregled dodijeljenih vozila</td></tr>
+                <tr><td><code>/vozac/voznje</code></td><td>Vozač</td><td>Početna i završna kilometraža rute</td></tr>
+                <tr><td><code>/vozac/gorivo</code></td><td>Vozač</td><td>Evidentiranje točenja goriva</td></tr>
             </tbody>
         </table>
     </section>
@@ -666,6 +730,34 @@ dotnet run</pre>
                 <strong>Očekivano:</strong> Zaliha Ibuprofena se povećava za 100. Prijem se pojavljuje u historiji sa imenom korisnika koji ga je uneo. Dashboard admina prikazuje posljednji prijem.
             </div>
         </div>
+
+        <div class="scenario">
+            <h4>Test 12 — Vozač: vožnja i točenje goriva</h4>
+            <ol class="step-list">
+                <li>Prijavi se kao <code>vozac1</code> / <code>vozac123</code></li>
+                <li>Na <strong>Moja vozila</strong> provjeri demo vozilo <code>A12-B-345</code></li>
+                <li>Idi na <strong>Vožnje</strong> → Nova vožnja — početna km = trenutna, ruta = <code>Dom zdravlja → Apoteka</code></li>
+                <li>Završi vožnju sa većom završnom kilometražom</li>
+                <li>Idi na <strong>Točenje goriva</strong> — unesi litre, označi pun rezervoar i spremi</li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Vožnja prelazi iz „U toku“ u „Završena“. Točenje se pojavljuje u historiji. Dashboard vozača prikazuje km i litre.
+            </div>
+        </div>
+
+        <div class="scenario">
+            <h4>Test 13 — Admin: vozila i statistika po periodima</h4>
+            <ol class="step-list">
+                <li>Prijavi se kao <code>admin</code></li>
+                <li>Na <strong>Vozila</strong> dodaj novo vozilo i dodijeli ga vozaču</li>
+                <li>Otvori <strong>Statistika flote</strong></li>
+                <li>Promijeni prikaz: Ukupno → Po godinama → Po mjesecima</li>
+                <li>Klikni <strong>Detalji</strong> na redu u pregledu perioda</li>
+            </ol>
+            <div class="expected">
+                <strong>Očekivano:</strong> Brojači km/litara se mijenjaju prema odabranom periodu. Tabele po vozilima i vozačima ostaju vidljive.
+            </div>
+        </div>
     </section>
 
     <section id="struktura">
@@ -684,6 +776,9 @@ dotnet run</pre>
                 <tr><td><code>ambulances</code></td><td>Lista ambulanti u domu zdravlja</td></tr>
                 <tr><td><code>requests</code></td><td>Svi zahtjevi za lijekove i njihovi statusi</td></tr>
                 <tr><td><code>stock_intakes</code></td><td>Historija prijema zaliha (lijek, količina, datum, ko je uneo, napomena)</td></tr>
+                <tr><td><code>vehicles</code></td><td>Vozila: oznaka, marka, model, gorivo, km, dodijeljeni vozač</td></tr>
+                <tr><td><code>vehicle_trips</code></td><td>Vožnje: početna/završna km, ruta, vozač, vozilo</td></tr>
+                <tr><td><code>fuel_fills</code></td><td>Točenja goriva: litri, cijena, pun rezervoar, kilometraža</td></tr>
                 <tr><td><code>__EFMigrationsHistory</code></td><td>Interna EF Core tabela koja pamti primijenjene migracije</td></tr>
                 <tr><td><code>Data/schema.sql</code></td><td>SQL skripta za ručno kreiranje baze i tabela ako je želiš pokrenuti iz MySQL klijenta</td></tr>
             </tbody>
@@ -713,7 +808,9 @@ dotnet run</pre>
 </main>
 
 <footer>
-    Dom Zdravlja — Evidencija lijekova &nbsp;|&nbsp; .NET 8 Blazor Server &nbsp;|&nbsp; MySQL + EF Core &nbsp;|&nbsp;
+    Student: Dejan Marjanovic — FIT 16/25 &nbsp;|&nbsp;
+    <a href="https://github.com/DejMar/DZ_V2_Project" style="color: #0d9488;">github.com/DejMar/DZ_V2_Project</a>
+    &nbsp;|&nbsp; .NET 8 Blazor Server &nbsp;|&nbsp; MySQL + EF Core &nbsp;|&nbsp;
     <a href="STRUKTURA_KODA.html" style="color: #0d9488;">Struktura koda</a>
 </footer>
 
