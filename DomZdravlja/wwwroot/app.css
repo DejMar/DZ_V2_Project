@@ -121,6 +121,33 @@ a {
     padding-top: 1rem;
 }
 
+.project-footnote {
+    margin: 0.85rem 0 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    opacity: 0.85;
+}
+
+.project-footnote a {
+    display: block;
+    margin-top: 0.2rem;
+    color: rgba(255,255,255,0.95);
+    text-decoration: underline;
+}
+
+.login-footnote {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    opacity: 1;
+    color: var(--text-muted);
+}
+
+.login-footnote a {
+    color: var(--primary);
+}
+
 .user-info {
     margin-bottom: 0.75rem;
 }
