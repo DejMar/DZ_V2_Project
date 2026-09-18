@@ -8,9 +8,53 @@
         <div class="page-header">
             <div>
                 <h1>Statistika flote</h1>
-                <p>Pregled vozača, vozila, kilometara i potrošnje goriva</p>
+                <p>Pregled vozača, vozila, kilometara i potrošnje goriva — ukupno, po godinama i mjesecima</p>
             </div>
             <button class="btn btn-outline" @onclick="LoadData">Osvježi</button>
+        </div>
+
+        <div class="card form-card">
+            <h2>Period</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Prikaz</label>
+                    <InputSelect @bind-Value="_filter.Period" class="form-control" @bind-Value:after="OnPeriodChanged">
+                        <option value="@FleetStatsPeriod.All">Ukupno</option>
+                        <option value="@FleetStatsPeriod.Year">Po godinama</option>
+                        <option value="@FleetStatsPeriod.Month">Po mjesecima</option>
+                    </InputSelect>
+                </div>
+
+                @if (_filter.Period is FleetStatsPeriod.Year or FleetStatsPeriod.Month)
+                {
+                    <div class="form-group">
+                        <label>Godina</label>
+                        <InputSelect @bind-Value="_selectedYear" class="form-control" @bind-Value:after="OnYearOrMonthChanged">
+                            @foreach (var year in _availableYears)
+                            {
+                                <option value="@year">@year</option>
+                            }
+                        </InputSelect>
+                    </div>
+                }
+
+                @if (_filter.Period == FleetStatsPeriod.Month)
+                {
+                    <div class="form-group">
+                        <label>Mjesec</label>
+                        <InputSelect @bind-Value="_selectedMonth" class="form-control" @bind-Value:after="OnYearOrMonthChanged">
+                            @for (var m = 1; m <= 12; m++)
+                            {
+                                <option value="@m">@GetMonthName(m)</option>
+                            }
+                        </InputSelect>
+                    </div>
+                }
+            </div>
+            @if (_summary is not null)
+            {
+                <p class="info-text">Trenutni prikaz: <strong>@_summary.PeriodLabel</strong></p>
+            }
         </div>
 
         @if (_summary is not null)
@@ -26,15 +70,15 @@
                 </div>
                 <div class="stat-card success">
                     <span class="stat-value">@_summary.TotalDistanceKm</span>
-                    <span class="stat-label">Ukupno km</span>
+                    <span class="stat-label">Km u periodu</span>
                 </div>
                 <div class="stat-card warning">
                     <span class="stat-value">@_summary.TotalFuelLiters.ToString("0.#")</span>
-                    <span class="stat-label">Ukupno litara</span>
+                    <span class="stat-label">Litara u periodu</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-value">@_summary.TotalFuelCost.ToString("0.00")</span>
-                    <span class="stat-label">Trošak goriva</span>
+                    <span class="stat-label">Trošak u periodu</span>
                 </div>
                 <div class="stat-card warning">
                     <span class="stat-value">@_summary.OpenTrips</span>
@@ -42,14 +86,52 @@
                 </div>
             </div>
 
+            @if (_summary.PeriodBreakdown.Count > 0)
+            {
+                <div class="card">
+                    <h2>@(_summary.Period == FleetStatsPeriod.All ? "Pregled po godinama" : "Pregled po mjesecima")</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Vožnje</th>
+                                <th>Pređeno km</th>
+                                <th>Točenja</th>
+                                <th>Gorivo (L)</th>
+                                <th>Trošak</th>
+                                <th>L/100km</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in _summary.PeriodBreakdown)
+                            {
+                                <tr>
+                                    <td><strong>@row.Label</strong></td>
+                                    <td>@row.TripCount</td>
+                                    <td>@row.TotalDistanceKm</td>
+                                    <td>@row.FuelFillCount</td>
+                                    <td>@row.TotalFuelLiters.ToString("0.##")</td>
+                                    <td>@row.TotalFuelCost.ToString("0.00")</td>
+                                    <td>@(row.AvgConsumptionLPer100Km?.ToString("0.00") ?? "—")</td>
+                                    <td class="actions">
+                                        <button class="btn btn-sm btn-outline" @onclick="() => DrillDown(row)">Detalji</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
             <div class="card">
-                <h2>Statistika po vozilima</h2>
+                <h2>Statistika po vozilima — @_summary.PeriodLabel</h2>
                 <table class="data-table">
                     <thead>
                         <tr>
                             <th>Vozilo</th>
                             <th>Vozač</th>
-                            <th>Km</th>
+                            <th>Trenutna km</th>
                             <th>Vožnje</th>
                             <th>Pređeno</th>
                             <th>Gorivo (L)</th>
@@ -95,7 +177,7 @@
             </div>
 
             <div class="card">
-                <h2>Statistika po vozačima</h2>
+                <h2>Statistika po vozačima — @_summary.PeriodLabel</h2>
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -144,9 +226,65 @@
 </AuthGuard>
 
 @code {
+    private static readonly string[] MonthNames =
+    [
+        "", "Januar", "Februar", "Mart", "April", "Maj", "Juni",
+        "Juli", "August", "Septembar", "Oktobar", "Novembar", "Decembar"
+    ];
+
     private FleetStatsSummary? _summary;
+    private FleetStatsFilter _filter = new();
+    private List<int> _availableYears = [DateTime.Today.Year];
+    private int _selectedYear = DateTime.Today.Year;
+    private int _selectedMonth = DateTime.Today.Month;
 
     protected override async Task OnInitializedAsync() => await LoadData();
 
-    private async Task LoadData() => _summary = await FleetStatsService.GetSummaryAsync();
+    private async Task LoadData()
+    {
+        _filter.Year = _filter.Period == FleetStatsPeriod.All ? null : _selectedYear;
+        _filter.Month = _filter.Period == FleetStatsPeriod.Month ? _selectedMonth : null;
+
+        _summary = await FleetStatsService.GetSummaryAsync(_filter);
+        _availableYears = _summary.AvailableYears.Count > 0
+            ? _summary.AvailableYears
+            : [DateTime.Today.Year];
+
+        if (!_availableYears.Contains(_selectedYear))
+            _selectedYear = _availableYears.First();
+    }
+
+    private async Task OnPeriodChanged()
+    {
+        if (_filter.Period != FleetStatsPeriod.All && _selectedYear == 0)
+            _selectedYear = _availableYears.FirstOrDefault(DateTime.Today.Year);
+
+        if (_filter.Period == FleetStatsPeriod.Month && _selectedMonth is < 1 or > 12)
+            _selectedMonth = DateTime.Today.Month;
+
+        await LoadData();
+    }
+
+    private async Task OnYearOrMonthChanged() => await LoadData();
+
+    private async Task DrillDown(PeriodStatRow row)
+    {
+        if (row.Month.HasValue)
+        {
+            _filter.Period = FleetStatsPeriod.Month;
+            _selectedYear = row.Year;
+            _selectedMonth = row.Month.Value;
+        }
+        else
+        {
+            _filter.Period = FleetStatsPeriod.Year;
+            _selectedYear = row.Year;
+            _selectedMonth = DateTime.Today.Month;
+        }
+
+        await LoadData();
+    }
+
+    private static string GetMonthName(int month) =>
+        month is >= 1 and <= 12 ? MonthNames[month] : month.ToString();
 }
